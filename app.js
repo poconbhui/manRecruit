@@ -1,18 +1,81 @@
-
-/**
- * Module dependencies.
- */
+/**********************
+ * Module dependencies
+ **********************/
 
 var express = require('express')
   , http = require('http')
+  , path = require('path')
   , Seq = require('seq')
-  , ns = require('./helpers/nationstates');
+  , ns = require('./helpers/nationstates')
+  , mongoose = require('mongoose')
+  , db = mongoose.createConnection('localhost', 'test');
 
-var app = express.createServer(express.logger());
+
+
+/*********************
+ * Nation model setup
+ *********************/
+
+var Nation;
+
+db.on('error', console.error.bind(console, 'connection error'));
+db.once('open', function(){
+  console.log('Mongoose successfully connected to MongoDB server');
+
+
+  var nationSchema = new mongoose.Schema({
+      name: { type: String, index: { unique: true } }
+    , recruiter: String
+    , recruitDate: Date
+  });
+
+  Nation = db.model('Nation', nationSchema);
+
+});
+
+
+
+/********************
+ * App configuration
+ ********************/
+
+var app = express();
+
+app.configure(function(){
+  app.set('port', process.env.PORT || 3000);
+  app.set('views', __dirname + '/views');
+  app.set('view engine', 'jade');
+  app.use(express.favicon());
+  app.use(express.logger('dev'));
+  app.use(express.bodyParser());
+  app.use(express.methodOverride());
+  app.use(express.cookieParser());
+  app.use(app.router);
+  app.use(express.static(path.join(__dirname, 'public')));
+
+
+  app.set('salt', 'pw');
+});
+
+app.configure('development', function(){
+  app.use(express.errorHandler());
+  app.locals.pretty = true;
+});
 
 var port = process.env.PORT || 5000;
 app.set('port', port);
 
+
+
+/********************************
+ * Nation generation and storage
+ ********************************/
+
+//the all important list of recruitable nations
+var nations = ["a","b","c","d"];
+
+//a list of stale nations that may not be in the database already
+var badNations = ["c","d","e"];
 
 function getNationsList(callback){
   Seq()
@@ -111,9 +174,6 @@ function getNationsList(callback){
 }
 
 
-// Nation generation and storage
-var nations = ["a","b","c","d"];
-var badNations = ["c","d","e"];
 getNationsList(function(nationArr){
   nations = nationArr;
 });
@@ -125,18 +185,133 @@ t = setInterval(function(){
 
 
 
+/*****************************************************
+ * Some functions that should have already been there
+ *****************************************************/
+function parseCookies(cookieString){
+  console.log('COOKIE STRING');
+  console.log(cookieString);
+  var cookies = {};
+  cookieString.split(';').forEach(function( cookie ) {
+    var parts = cookie.split('=');
+    cookies[ parts[ 0 ].trim() ] = ( parts[ 1 ] || '' ).trim();
+  });
+
+  return cookies;
+};
 
 
 
+/********************
+ * Logging functions
+ ********************/
+function requireLoggedIn(req, res){
+  console.log('CHECKING COOKIES:');
 
-app.get('/', function(req,res){
-  var nation = nations.pop() || 'EMPTY!';
-  res.write('GIVEN: ' + nation);
-  res.end();
+  cookies = parseCookies(req.headers.cookie);
+  console.log(cookies);
+
+
+  if(cookies['password'] != cookies['username'] + app.get('salt')){
+    console.log('OH SHIT! NOT LOGGED IN!');
+    return false;
+  }
+
+  return true;
+}
+
+app.get('/login', function(req,res){
+  res.render('login', {title: "Login to manRecruit"});
+});
+
+app.get('/logout', function(req,res){
+  res.cookie('username', null);
+  res.cookie('password', null);
+
+  res.redirect('/');
+});
+
+app.post('/login', function(req,res){
+  res.cookie('username', req.param('username', null));
+  res.cookie('password', req.param('password', null));
+
+  res.redirect('/');
 });
 
 
 
+/***************************************
+ * Nation getting and logging functions
+ ***************************************/
+app.get('/', function(req,res){
+  if(!requireLoggedIn(req,res)){
+    res.redirect('/login');
+    return;
+  }
+  console.log('PASSED LOGIN');
+
+  var thisNation = nations.shift();
+
+  cookies = parseCookies(req.headers.cookie);
+
+  if(thisNation !== undefined){
+    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date});
+    nation.save(function(err){
+      if(err === null) {
+        res.render('index', {title: "GETTING NATION", nation: nation.name});
+      }
+      else {
+        res.render('index', {title: "GETTING NATION", nation: nation.name, err: err.err});
+      }
+    });
+  }
+  else{
+    res.render('index',{title: "GETTING NATION", nation:'', err: 'No new nations!'});
+  }
+
+});
+
+app.post('/',function(req,res){
+  res.redirect('/');
+});
+
+
+app.get('/api/currentList', function(req, res){
+  res.json(nations);
+});
+
+app.get('/api/newNation', function(req,res){
+  if(!requireLoggedIn(req,res)){
+    res.redirect('/login');
+    return;
+  }
+
+  var thisNation = nations.shift();
+
+  cookies = parseCookies(req.headers.cookie);
+
+  if(thisNation !== undefined){
+    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date});
+    nation.save(function(err){
+      if(err === null) {
+        res.json({
+            nation: nation.name
+        });
+      }
+      else {
+        res.json({
+          err: err
+        });
+      }
+    });
+  }
+});
+
+
+
+/*****************
+ * Startup Server
+ * ***************/
 http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
 });

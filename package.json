@@ -6,8 +6,10 @@
   },
   "dependencies": {
     "express": "3.0.0rc3",
+    "jade": "*",
     "xml2js": "0.1",
-    "seq": "*"
+    "seq": "*",
+    "mongoose": "*"
   },
   "engines": {
     "node": "0.8.x",
