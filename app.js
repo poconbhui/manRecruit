@@ -154,21 +154,26 @@ function getNationsList(callback){
 
       //remove nations already in database
 
-      var Recruited = {compliment: function(array){ return array; }};
+      Nation.find({'name': { $in: merged } }, function(err,ret){
+        for(var e=0; e<ret.length; ++e){
+          var i = merged.indexOf(ret[e].name);
+          if(i>=0){
+            merged.splice(i,1);
+          }
+        }
+ 
+        //remove nations from badlist
+        
+        newMerged = merged.filter(function(el){
+          return badNations.indexOf(el) < 0;
+        });
+        merged = newMerged;
 
-      newMerged = Recruited.compliment(merged);
-      merged = newMerged;
-
-      //remove nations from badlist
-      
-      newMerged = merged.filter(function(el){
-        return badNations.indexOf(el) < 0;
+        if(typeof callback === 'function'){
+          callback(merged);
+        }
       });
-      merged = newMerged;
 
-      if(typeof callback === 'function'){
-        callback(merged);
-      }
     });
 }
 
@@ -176,6 +181,7 @@ function getNationsList(callback){
 getNationsList(function(nationArr){
   badNations = nationArr;
   nations = [];
+  //nations = nationArr;
 });
 t = setInterval(function(){
   getNationsList(function(nationArr){
