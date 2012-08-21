@@ -8,7 +8,7 @@ var express = require('express')
   , Seq = require('seq')
   , ns = require('./helpers/nationstates')
   , mongoose = require('mongoose')
-  , db = mongoose.createConnection('localhost', 'test');
+  , db = mongoose.connect(process.env.MONGOLAB_URI || 'localhost/test');
 
 
 
@@ -16,22 +16,14 @@ var express = require('express')
  * Nation model setup
  *********************/
 
-var Nation;
 
-db.on('error', console.error.bind(console, 'connection error'));
-db.once('open', function(){
-  console.log('Mongoose successfully connected to MongoDB server');
-
-
-  var nationSchema = new mongoose.Schema({
-      name: { type: String, index: { unique: true } }
-    , recruiter: String
-    , recruitDate: Date
-  });
-
-  Nation = db.model('Nation', nationSchema);
-
+var nationSchema = new mongoose.Schema({
+    name: { type: String, index: { unique: true } }
+  , recruiter: String
+  , recruitDate: Date
 });
+
+var Nation = db.model('Nation', nationSchema);
 
 
 
@@ -260,6 +252,10 @@ app.get('/', function(req,res){
       if(err === null) {
         res.render('index', {title: "GETTING NATION", nation: nation.name});
       }
+      else if(err.code == 11000){
+        res.redirect('/');
+        res.end();
+      }
       else {
         res.render('index', {title: "GETTING NATION", nation: nation.name, err: err.err});
       }
@@ -297,6 +293,10 @@ app.get('/api/newNation', function(req,res){
         res.json({
             nation: nation.name
         });
+      }
+      else if(err.code == 11000){
+        res.redirect('/api/newNation');
+        res.end();
       }
       else {
         res.json({
