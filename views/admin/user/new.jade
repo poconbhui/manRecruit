@@ -1,0 +1,13 @@
+extends ../../layout
+
+block headers
+
+block content
+  form(method="post", action="/admin/user/show")
+    div
+      label(for="username")
+        | username
+      input(type="text", name="username")
+
+    div
+      input(type="submit", value="Submit")

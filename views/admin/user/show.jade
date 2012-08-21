@@ -1,0 +1,13 @@
+extends ../../layout
+
+block headers
+
+block content
+  div
+    | Username: #{username}
+  div
+    | Password: #{password}
+
+  p
+    a(href="/admin/user/new")
+      | Create new user

@@ -190,6 +190,11 @@ t = setInterval(function(){
 function parseCookies(cookieString){
   //console.log('COOKIE STRING');
   //console.log(cookieString);
+
+  if(typeof cookieString !== 'string'){
+    return {};
+  }
+
   var cookies = {};
   cookieString.split(';').forEach(function( cookie ) {
     var parts = cookie.split('=');
@@ -207,7 +212,7 @@ function parseCookies(cookieString){
 function requireLoggedIn(req, res){
   //console.log('CHECKING COOKIES:');
 
-  cookies = req.headers.cookie? parseCookies(req.headers.cookie) : {};
+  cookies = parseCookies(req.headers.cookie);
   //console.log(cookies);
 
 
@@ -319,6 +324,60 @@ app.get('/api/newNation', function(req,res){
       }
     });
   }
+});
+
+
+function requireAdmin(req,res){
+  cookies = parseCookies(req.headers.cookie);
+  console.log('ADMIN FOUND');
+  console.log(cookies['admin_username']);
+  console.log(cookies['admin_password']);
+
+  if( cookies['admin_username'] == 'admin'
+    && cookies['admin_password'] == 'I_HEART_TD')
+  {
+    return true;
+  }
+  return false;
+}
+
+app.get('/admin/login', function(req,res){
+  res.render('admin/login', {title: "Admin Login"});
+});
+app.post('/admin/login', function(req,res){
+  res.cookie('admin_username', req.param('username', null));
+  res.cookie('admin_password', req.param('password', null));
+
+  res.redirect('/admin');
+});
+
+app.get('/admin', function(req,res){
+  if(!requireAdmin(req,res)){
+    res.redirect('/admin/login');
+    return;
+  }
+
+  res.render('admin/index', {title: "Admin Home"})
+});
+
+app.get('/admin/user/new', function(req,res){
+  if(!requireAdmin(req,res)){
+    res.redirect('/admin/login');
+    return;
+  }
+
+  res.render('admin/user/new', {title: "Create username/password pair"});
+});
+app.post('/admin/user/show', function(req,res){
+  if(!requireAdmin(req,res)){
+    res.redirect('/admin/login');
+    return;
+  }
+
+  var username = req.param('username',null);
+  var password = crypto.createHash('md5').update(username+app.get('salt')).digest('hex');
+
+  res.render('admin/user/show', {title: "username/password keypair", username: username, password: password});
 });
 
 
