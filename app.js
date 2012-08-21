@@ -208,7 +208,7 @@ function parseCookies(cookieString){
 function requireLoggedIn(req, res){
   console.log('CHECKING COOKIES:');
 
-  cookies = parseCookies(req.headers.cookie);
+  cookies = req.headers.cookie? parseCookies(req.headers.cookie) : {};
   console.log(cookies);
 
 
