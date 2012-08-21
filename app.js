@@ -8,7 +8,14 @@ var express = require('express')
   , Seq = require('seq')
   , ns = require('./helpers/nationstates')
   , mongoose = require('mongoose')
-  , db = mongoose.connect(process.env.MONGOLAB_URI || 'localhost/test');
+  , db = mongoose.createConnection(process.env.MONGOLAB_URI || 'localhost/test')
+  , crypto = require('crypto');
+
+
+db.on('error', console.error.bind(console, 'connection error:'));
+db.once('open', function () {
+  console.log('Mongoose connected to MongoDB database at ' + db.user + ':' + db.pass + '@' + db.host + ':' + db.port + '/' + db.name);
+});
 
 
 
@@ -181,8 +188,8 @@ t = setInterval(function(){
  * Some functions that should have already been there
  *****************************************************/
 function parseCookies(cookieString){
-  console.log('COOKIE STRING');
-  console.log(cookieString);
+  //console.log('COOKIE STRING');
+  //console.log(cookieString);
   var cookies = {};
   cookieString.split(';').forEach(function( cookie ) {
     var parts = cookie.split('=');
@@ -198,14 +205,21 @@ function parseCookies(cookieString){
  * Logging functions
  ********************/
 function requireLoggedIn(req, res){
-  console.log('CHECKING COOKIES:');
+  //console.log('CHECKING COOKIES:');
 
   cookies = req.headers.cookie? parseCookies(req.headers.cookie) : {};
-  console.log(cookies);
+  //console.log(cookies);
 
 
-  if(cookies['password'] != cookies['username'] + app.get('salt')){
-    console.log('OH SHIT! NOT LOGGED IN!');
+  var hash = crypto.createHash('md5');
+  hash.update(cookies['username'] + app.get('salt'));
+  hash = hash.digest('hex');
+
+  //console.log('md5('+cookies['username']+app.get('salt')+')');
+  //console.log(hash);
+
+  if(cookies['password'] != hash){
+    //console.log('OH SHIT! NOT LOGGED IN!');
     return false;
   }
 
@@ -240,7 +254,7 @@ app.get('/', function(req,res){
     res.redirect('/login');
     return;
   }
-  console.log('PASSED LOGIN');
+  //console.log('PASSED LOGIN');
 
   var thisNation = nations.shift();
 
