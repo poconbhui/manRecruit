@@ -174,7 +174,8 @@ function getNationsList(callback){
 
 
 getNationsList(function(nationArr){
-  nations = nationArr;
+  badNations = nationArr;
+  nations = [];
 });
 t = setInterval(function(){
   getNationsList(function(nationArr){
