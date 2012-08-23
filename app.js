@@ -74,12 +74,7 @@ app.set('port', port);
 //the all important list of recruitable nations
 var nations = ["a","b","c","d"];
 
-//a list of stale nations that may not be in the database already
-var badNations = ["c","d","e"];
-
-
 var sinkerNations = ["x","y","z","w"];
-var sinkerBadNations = ["z","w","k","l"];
 
 function getNationsList(callback){
   var c = new nseq();
@@ -154,6 +149,7 @@ function getNationsList(callback){
 
 
       //remove nations already in database
+      //due to either recruiting or badListing
 
       Nation.find({'name': { $in: merged } }, function(err,ret){
         for(var e=0; e<ret.length; ++e){
@@ -163,13 +159,6 @@ function getNationsList(callback){
           }
         }
  
-        //remove nations from badlist
-        
-        newMerged = merged.filter(function(el){
-          return badNations.indexOf(el) < 0;
-        });
-        merged = newMerged;
-
         if(typeof callback === 'function'){
           callback(merged);
         }
@@ -232,6 +221,7 @@ function getSinkerNationsList(callback){
         }
       }
       //remove nations already in database
+      //due to either recruitment or badListing
 
       Nation.find({'name': { $in: merged } }, function(err,ret){
         for(var e=0; e<ret.length; ++e){
@@ -241,13 +231,6 @@ function getSinkerNationsList(callback){
           }
         }
  
-        //remove nations from badlist
-        
-        newMerged = merged.filter(function(el){
-          return sinkerBadNations.indexOf(el) < 0;
-        });
-        merged = newMerged;
-
         if(typeof callback === 'function'){
           callback(merged);
         }
@@ -359,7 +342,7 @@ app.get('/', function(req,res){
   cookies = parseCookies(req.headers.cookie);
 
   if(thisNation !== undefined){
-    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date});
+    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
     nation.save(function(err){
       if(err === null) {
         res.render('index', {title: "GETTING NATION", nation: nation.name});
@@ -403,7 +386,7 @@ app.get('/api/newNation', function(req,res){
   cookies = parseCookies(req.headers.cookie);
 
   if(thisNation !== undefined){
-    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date});
+    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
     nation.save(function(err){
       if(err === null) {
         res.json({
@@ -483,10 +466,21 @@ app.get('/admin/nation/makeBad', function(req,res){
     return;
   }
 
-  badNations = nations.slice(0);
-  nations = [];
+  for(var i in nations){
+    (function(thisNation){
+      var badNation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'badNation'});
+      badNation.save(function(err){});
+    })(nations[i]);
+  }
 
-  sinkerBadNations = sinkerNations.slice(0);
+  for(var i in sinkerNations){
+    (function(thisNation){
+      var badNation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'badNation'});
+      badNation.save(function(err){});
+    })(sinkerNations[i]);
+  }
+
+  nations = [];
   sinkerNations = [];
 
   res.send('badNations generated from current nation list');
