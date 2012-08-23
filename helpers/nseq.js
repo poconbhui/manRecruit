@@ -3,37 +3,63 @@ var events = require('events');
 var nseq = function() {
   var self = this;
 
-  var stack = [];
+  var stack = arguments[0] || [];
   var stackCount = 0;
 
   this.vals = {};
 
-  this.push = function(){
-    if(arguments[0] == 'serial'){
-      stack.push({type: 'serial', func: arguments[1]});
+  this.push = function(options){
+    if(options.call){
+      stack.push({type: 'serial', func: options});
     }
-    else if(typeof arguments[0] == 'function'){
-      stack.push({type: 'serial', func: arguments[0]});
-    }
-    else if(arguments[0] == 'parallel'){
-      stack.push({type: 'parallel', func: arguments[1]});
+    else{
+      stack.push(options);
     }
 
     return self;
   };
 
-  this.done = function(){
-    var f = stack.shift();
-    
-    if(typeof f !== 'undefined'){
-      var args = [self];
-      for(var i in arguments){
-        args.push(arguments[i]);
-      }
-
-      f.func.apply(self.done,args);
-    };
+  var funcState = function(){
+    this.vals = self.vals;
   };
+
+  var done = function(){
+    if(stack[0]){
+      fs = new funcState;
+      fs.done = done;
+
+      if(!stack[0].type || stack[0].type == 'serial'){
+        var f = stack.shift();
+        f.func(fs);
+      }
+      else if(stack[0].type = 'parallel'){
+        var f = stack.shift();
+        var fs = new funcState;
+
+        fs.doneTotal = f.range.length;
+        fs.doneCount = 0;
+
+        fs.done = function(){
+          ++fs.doneCount;
+
+          if(fs.doneCount == fs.doneTotal){
+            done();
+          }
+        };
+
+        for(var key in f.range){
+          var val = f.range[key];
+          (function(key,val){
+            f.func(key, val, fs);
+          })(key, val);
+        }
+      }
+    }
+  };
+
+  this.exec = function(){
+    done();
+  }
 };
 
 module.exports = nseq;

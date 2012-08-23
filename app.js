@@ -90,21 +90,21 @@ function getNationsList(callback){
 
     // push feeders into pareach
 
-    for(var i=0; i<ns.feeders.length; ++i){
-      // run for each feeder
-      (function(feeder){
-        c.push(function(c){
-          ns.api("region="+feeder+"&q=nations&v=3", function(res){
-            r = res['NATIONS'];
-            c.vals[feeder] = r.split(':');
-            c.done();
-          });
+    // run for each feeder
+    c.push({
+      type: 'parallel',
+      range: ns.feeders,
+      func: function(index, feeder, c){
+        ns.api("region="+feeder+"&q=nations&v=3", function(res){
+          r = res['NATIONS'];
+          c.vals[feeder] = r.split(':');
+          c.done();
         });
-      })(ns.feeders[i]);
-    }
+      }
+    })
 
     // get new nations
-    c.push(function(c){
+    .push(function(c){
       ns.api("q=newnations", function(res) {
         r = res['NEWNATIONS'];
         c.vals['newNations'] = r.split(',');
@@ -114,7 +114,7 @@ function getNationsList(callback){
 
     // stuff it all together
     //merge nation arrays
-    c.push(function(c){
+    .push(function(c){
       //console.log('SEQ RETURN');
       //console.log(this.vars);
 
@@ -173,30 +173,29 @@ function getNationsList(callback){
         }
       });
 
-    });
-
-    c.done();
+    })
+    .exec();
 }
 
 function getSinkerNationsList(callback){
-  var c = new nseq();
+  var c = new nseq()
 
-    for(var i=0; i<ns.sinkers.length; ++i){
-      // run for each feeder
-      (function(sinker){
-        c.push(function(c){
-          ns.api("region="+sinker+"&q=nations&v=3", function(res){
-            r = res['NATIONS'];
-            c.vals[sinker] = r.split(':');
-            c.done();
-          });
+    // run for each feeder
+    .push({
+      type: 'parallel',
+      range: ns.sinkers,
+      func: function(index, sinker, c){
+        ns.api("region="+sinker+"&q=nations&v=3", function(res){
+          r = res['NATIONS'];
+          c.vals[sinker] = r.split(':');
+          c.done();
         });
-      })(ns.sinkers[i]);
-    }
+      }
+    })
 
     // stuff it all together
     //merge nation arrays
-    c.push(function(c){
+    .push(function(c){
       //console.log('SEQ RETURN');
       //console.log(this.vars);
 
@@ -245,9 +244,8 @@ function getSinkerNationsList(callback){
         }
       });
 
-    });
-
-    c.done();
+    })
+    .exec();
 }
 
 
