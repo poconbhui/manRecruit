@@ -5,7 +5,7 @@
 var express = require('express')
   , http = require('http')
   , path = require('path')
-  , Seq = require('seq')
+  , nseq = require('./helpers/nseq')
   , ns = require('./helpers/nationstates')
   , mongoose = require('mongoose')
   , db = mongoose.createConnection(process.env.MONGOLAB_URI || 'localhost/test')
@@ -28,6 +28,7 @@ var nationSchema = new mongoose.Schema({
     name: { type: String, index: { unique: true } }
   , recruiter: String
   , recruitDate: Date
+  , from: String
 });
 
 var Nation = db.model('Nation', nationSchema);
@@ -76,44 +77,44 @@ var nations = ["a","b","c","d"];
 //a list of stale nations that may not be in the database already
 var badNations = ["c","d","e"];
 
+
+var sinkerNations = ["x","y","z","w"];
+var sinkerBadNations = ["z","w","k","l"];
+
 function getNationsList(callback){
-  Seq()
+  var c = new nseq();
 
     // push feeders into pareach
-    .seq(function() {
-      this(false,ns.feeders)
-    })
-    .flatten()
 
-    // run for each feeder
-    .parEach(function(feeder){
-      B = this;
-
-      ns.api("region="+feeder+"&q=nations&v=3", function(res){
-        r = res['NATIONS'];
-        B.vars[feeder] = r.split(':');
-        B(false);
-      });
-    })
+    for(var i=0; i<ns.feeders.length; ++i){
+      // run for each feeder
+      (function(feeder){
+        c.push(function(c){
+          ns.api("region="+feeder+"&q=nations&v=3", function(res){
+            r = res['NATIONS'];
+            c.vals[feeder] = r.split(':');
+            c.done();
+          });
+        });
+      })(ns.feeders[i]);
+    }
 
     // get new nations
-    .par(function(){
-      B = this;
-
+    c.push(function(c){
       ns.api("q=newnations", function(res) {
         r = res['NEWNATIONS'];
-        B.vars['newNations'] = r.split(',');
-        B(false);
+        c.vals['newNations'] = r.split(',');
+        c.done();
       });
     })
 
     // stuff it all together
     //merge nation arrays
-    .seq(function(newNations){
+    c.push(function(c){
       //console.log('SEQ RETURN');
       //console.log(this.vars);
 
-      var rawList = this.vars;
+      var rawList = c.vals;
 
       function ltFeeders(i){
         for(var k=0; k<ns.feeders.length; ++k){
@@ -175,17 +176,102 @@ function getNationsList(callback){
       });
 
     });
+
+    c.done();
+}
+
+function getSinkerNationsList(callback){
+  var c = new nseq();
+
+    for(var i=0; i<ns.sinkers.length; ++i){
+      // run for each feeder
+      (function(sinker){
+        c.push(function(c){
+          ns.api("region="+sinker+"&q=nations&v=3", function(res){
+            r = res['NATIONS'];
+            c.vals[sinker] = r.split(':');
+            c.done();
+          });
+        });
+      })(ns.sinkers[i]);
+    }
+
+    // stuff it all together
+    //merge nation arrays
+    c.push(function(c){
+      //console.log('SEQ RETURN');
+      //console.log(this.vars);
+
+      var rawList = c.vals;
+
+      function ltSinkers(i){
+        for(var k=0; k<ns.sinkers.length; ++k){
+          if(i<rawList[ns.sinkers[k]].length){
+            return true;
+          }
+        }
+        return false;
+      }
+      function sinkersLeft(i){
+        var ret = [];
+
+        for(var k=0; k<ns.sinkers.length; ++k){
+          if(i<rawList[ns.sinkers[k]].length){
+            ret.push(ns.sinkers[k]);
+          }
+        }
+        return ret;
+      }
+
+
+      var merged = [];
+      for(var i=0; ltSinkers(i); ++i){
+        f = sinkersLeft(i);
+        for (var j=0; j<f.length; ++j){
+          merged.push(rawList[f[j]].shift());
+        }
+      }
+      //remove nations already in database
+
+      Nation.find({'name': { $in: merged } }, function(err,ret){
+        for(var e=0; e<ret.length; ++e){
+          var i = merged.indexOf(ret[e].name);
+          if(i>=0){
+            merged.splice(i,1);
+          }
+        }
+ 
+        //remove nations from badlist
+        
+        newMerged = merged.filter(function(el){
+          return sinkerBadNations.indexOf(el) < 0;
+        });
+        merged = newMerged;
+
+        if(typeof callback === 'function'){
+          callback(merged);
+        }
+      });
+
+    });
+
+    c.done();
 }
 
 
+
 getNationsList(function(nationArr){
-  badNations = nationArr;
-  nations = [];
-  //nations = nationArr;
+  nations = nationArr;
+});
+getSinkerNationsList(function(nationArr){
+  sinkerNations = nationArr;
 });
 t = setInterval(function(){
   getNationsList(function(nationArr){
     nations = nationArr;
+  });
+  getSinkerNationsList(function(nationArr){
+    sinkerNations = nationArr;
   });
 }, 30*1000);
 
@@ -298,6 +384,10 @@ app.post('/',function(req,res){
 });
 
 
+app.get('/api/currentSinkerList', function(req, res){
+  res.json(sinkerNations);
+});
+
 app.get('/api/currentList', function(req, res){
   res.json(nations);
 });
@@ -336,9 +426,9 @@ app.get('/api/newNation', function(req,res){
 
 function requireAdmin(req,res){
   cookies = parseCookies(req.headers.cookie);
-  console.log('ADMIN FOUND');
-  console.log(cookies['admin_username']);
-  console.log(cookies['admin_password']);
+  //console.log('ADMIN FOUND');
+  //console.log(cookies['admin_username']);
+  //console.log(cookies['admin_password']);
 
   if( cookies['admin_username'] == 'admin'
     && cookies['admin_password'] == 'I_HEART_TD')
@@ -386,6 +476,23 @@ app.post('/admin/user/show', function(req,res){
 
   res.render('admin/user/show', {title: "username/password keypair", username: username, password: password});
 });
+
+app.get('/admin/nation/makeBad', function(req,res){
+  if(!requireAdmin(req,res)){
+    res.redirect('/admin/login');
+    return;
+  }
+
+  badNations = nations.slice(0);
+  nations = [];
+
+  sinkerBadNations = sinkerNations.slice(0);
+  sinkerNations = [];
+
+  res.send('badNations generated from current nation list');
+});
+
+
 
 
 

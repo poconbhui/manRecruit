@@ -42,7 +42,8 @@ var nationstates = {
 
   sinkers: [
     "lazarus",
-    "osiris"
+    "osiris",
+    "balder"
   ],
 
   api: function(options, callback) {

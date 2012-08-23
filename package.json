@@ -8,7 +8,6 @@
     "express": "3.0.0rc3",
     "jade": "*",
     "xml2js": "0.1",
-    "seq": "*",
     "mongoose": "*"
   },
   "engines": {
