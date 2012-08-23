@@ -15,6 +15,15 @@ var express = require('express')
 db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function () {
   console.log('Mongoose connected to MongoDB database at ' + db.user + ':' + db.pass + '@' + db.host + ':' + db.port + '/' + db.name);
+
+  console.log('Populating feeder nations');
+  getNationsList(function(nationArr){
+    nations = nationArr;
+  });
+  console.log('Populating sinker nations');
+  getSinkerNationsList(function(nationArr){
+    sinkerNations = nationArr;
+  });
 });
 
 
@@ -72,9 +81,9 @@ app.set('port', port);
  ********************************/
 
 //the all important list of recruitable nations
-var nations = ["a","b","c","d"];
+var nations = [];
 
-var sinkerNations = ["x","y","z","w"];
+var sinkerNations = [];
 
 function getNationsList(callback){
   var c = new nseq();
@@ -243,12 +252,6 @@ function getSinkerNationsList(callback){
 
 
 
-getNationsList(function(nationArr){
-  nations = nationArr;
-});
-getSinkerNationsList(function(nationArr){
-  sinkerNations = nationArr;
-});
 t = setInterval(function(){
   getNationsList(function(nationArr){
     nations = nationArr;
@@ -345,25 +348,63 @@ app.get('/', function(req,res){
     var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
     nation.save(function(err){
       if(err === null) {
-        res.render('index', {title: "GETTING NATION", nation: nation.name});
+        res.render('index', {title: "GETTING NATION", nation: nation.name, action: '/'});
       }
       else if(err.code == 11000){
         res.redirect('/');
         res.end();
       }
       else {
-        res.render('index', {title: "GETTING NATION", nation: nation.name, err: err.err});
+        res.render('index', {title: "GETTING NATION", nation: nation.name, err: err.err, action: '/'});
       }
     });
   }
   else{
-    res.render('index',{title: "GETTING NATION", nation:'', err: 'No new nations!'});
+    res.render('index',{title: "GETTING NATION", nation:'', err: 'No new nations!', action: '/'});
   }
 
 });
 
 app.post('/',function(req,res){
   res.redirect('/');
+});
+
+
+
+app.get('/sinkers', function(req,res){
+  if(!requireLoggedIn(req,res)){
+    res.redirect('/login');
+    return;
+  }
+  //console.log('PASSED LOGIN');
+
+  var thisNation = nations.shift();
+
+  cookies = parseCookies(req.headers.cookie);
+
+  if(thisNation !== undefined){
+    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
+    nation.save(function(err){
+      if(err === null) {
+        res.render('index', {title: "GETTING NATION", nation: nation.name, action: '/sinkers'});
+      }
+      else if(err.code == 11000){
+        res.redirect('/sinkers');
+        res.end();
+      }
+      else {
+        res.render('index', {title: "GETTING NATION", nation: nation.name, err: err.err, action: '/sinkers'});
+      }
+    });
+  }
+  else{
+    res.render('index',{title: "GETTING NATION", nation:'', err: 'No new nations!', action: '/sinkers'});
+  }
+
+});
+
+app.post('/sinkers',function(req,res){
+  res.redirect('/sinkers');
 });
 
 
@@ -395,6 +436,37 @@ app.get('/api/newNation', function(req,res){
       }
       else if(err.code == 11000){
         res.redirect('/api/newNation');
+        res.end();
+      }
+      else {
+        res.json({
+          err: err
+        });
+      }
+    });
+  }
+});
+
+app.get('/api/sinkerNation', function(req,res){
+  if(!requireLoggedIn(req,res)){
+    res.redirect('/login');
+    return;
+  }
+
+  var thisNation = nations.shift();
+
+  cookies = parseCookies(req.headers.cookie);
+
+  if(thisNation !== undefined){
+    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
+    nation.save(function(err){
+      if(err === null) {
+        res.json({
+            nation: nation.name
+        });
+      }
+      else if(err.code == 11000){
+        res.redirect('/api/sinkerNation');
         res.end();
       }
       else {

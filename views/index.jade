@@ -49,7 +49,7 @@ block content
   table#main
     tr
       td.forms
-        form.newNation(method='post', action='/')
+        form.newNation(method='post', action=''+action)
           input(type='submit', value='Get Nation')
 
         - if(typeof(nation) != 'undefined')
