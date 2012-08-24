@@ -320,8 +320,8 @@ app.get('/logout', function(req,res){
 });
 
 app.post('/login', function(req,res){
-  res.cookie('username', req.param('username', null));
-  res.cookie('password', req.param('password', null));
+  res.cookie('username', req.param('username', null), {path: '/', httpOnly: true});
+  res.cookie('password', req.param('password', null), {path: '/', httpOnly: true});
 
   res.redirect('/');
 });
@@ -495,8 +495,8 @@ app.get('/admin/login', function(req,res){
   res.render('admin/login', {title: "Admin Login"});
 });
 app.post('/admin/login', function(req,res){
-  res.cookie('admin_username', req.param('username', null));
-  res.cookie('admin_password', req.param('password', null));
+  res.cookie('admin_username', req.param('username', null), {path: '/', httpOnly: true});
+  res.cookie('admin_password', req.param('password', null), {path: '/', httpOnly: true});
 
   res.redirect('/admin');
 });
