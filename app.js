@@ -294,6 +294,17 @@ function requireLoggedIn(req, res){
   return true;
 }
 
+
+app.get('/',function(req,res){
+  if(!requireLoggedIn(req,res)){
+    res.redirect('/login');
+    return;
+  }
+
+  res.render('index', {title: "manRecruit Home"});
+});
+
+
 app.get('/login', function(req,res){
   res.render('login', {title: "Login to manRecruit"});
 });
@@ -317,7 +328,11 @@ app.post('/login', function(req,res){
 /***************************************
  * Nation getting and logging functions
  ***************************************/
-app.get('/', function(req,res){
+app.get('/feeders', function(req,res){
+  res.redirect('/');
+  res.end();
+});
+app.post('/feeders', function(req,res){
   if(!requireLoggedIn(req,res)){
     res.redirect('/login');
     return;
@@ -332,30 +347,29 @@ app.get('/', function(req,res){
     var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
     nation.save(function(err){
       if(err === null) {
-        res.render('index', {title: "GETTING NATION", nation: nation.name, action: '/'});
+        res.render('getNation', {title: "New Nation - "+nation.name, nation: nation.name, action: '/feeders'});
       }
       else if(err.code == 11000){
         res.redirect('/');
         res.end();
       }
       else {
-        res.render('index', {title: "GETTING NATION", nation: nation.name, err: err.err, action: '/'});
+        res.render('getNation', {title: "New Nation Error...", nation: nation.name, err: err.err, action: '/feeders'});
       }
     });
   }
   else{
-    res.render('index',{title: "GETTING NATION", nation:'', err: 'No new nations!', action: '/'});
+    res.render('getNation',{title: "No New Nations", nation:'', err: 'No new nations!', action: '/feeders'});
   }
 
 });
 
-app.post('/',function(req,res){
-  res.redirect('/');
-});
-
-
 
 app.get('/sinkers', function(req,res){
+  res.redirect('/');
+  res.end();
+});
+app.post('/sinkers', function(req,res){
   if(!requireLoggedIn(req,res)){
     res.redirect('/login');
     return;
@@ -370,25 +384,21 @@ app.get('/sinkers', function(req,res){
     var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
     nation.save(function(err){
       if(err === null) {
-        res.render('index', {title: "GETTING NATION", nation: nation.name, action: '/sinkers'});
+        res.render('getNation', {title: "Refounded Nation - "+nation.name, nation: nation.name, action: '/sinkers'});
       }
       else if(err.code == 11000){
         res.redirect('/sinkers');
         res.end();
       }
       else {
-        res.render('index', {title: "GETTING NATION", nation: nation.name, err: err.err, action: '/sinkers'});
+        res.render('getNation', {title: "Refounded Nation Error...", nation: nation.name, err: err.err, action: '/sinkers'});
       }
     });
   }
   else{
-    res.render('index',{title: "GETTING NATION", nation:'', err: 'No new nations!', action: '/sinkers'});
+    res.render('getNation',{title: "No Newly Refounded Nations", nation:'', err: 'No new nations!', action: '/sinkers'});
   }
 
-});
-
-app.post('/sinkers',function(req,res){
-  res.redirect('/sinkers');
 });
 
 
