@@ -339,28 +339,30 @@ app.post('/feeders', function(req,res){
   }
   //console.log('PASSED LOGIN');
 
-  var thisNation = nations.shift();
+  var thisFunc = function(){
+    var thisNation = nations.shift();
 
-  cookies = parseCookies(req.headers.cookie);
+    cookies = parseCookies(req.headers.cookie);
 
-  if(thisNation !== undefined){
-    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
-    nation.save(function(err){
-      if(err === null) {
-        res.render('getNation', {title: "New Nation - "+nation.name, nation: nation.name, action: '/feeders'});
-      }
-      else if(err.code == 11000){
-        res.redirect('/');
-        res.end();
-      }
-      else {
-        res.render('getNation', {title: "New Nation Error...", nation: nation.name, err: err.err, action: '/feeders'});
-      }
-    });
-  }
-  else{
-    res.render('getNation',{title: "No New Nations", nation:'', err: 'No new nations!', action: '/feeders'});
-  }
+    if(thisNation !== undefined){
+      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
+      nation.save(function(err){
+        if(err === null) {
+          res.render('getNation', {title: "New Nation - "+nation.name, nation: nation.name, action: '/feeders'});
+        }
+        else if(err.code == 11000){
+          thisFunc();
+        }
+        else {
+          res.render('getNation', {title: "New Nation Error...", nation: nation.name, err: err.err, action: '/feeders'});
+        }
+      });
+    }
+    else{
+      res.render('getNation',{title: "No New Nations", nation:'', err: 'No new nations!', action: '/feeders'});
+    }
+  };
+  thisFunc();
 
 });
 
@@ -376,28 +378,30 @@ app.post('/sinkers', function(req,res){
   }
   //console.log('PASSED LOGIN');
 
-  var thisNation = nations.shift();
+  var thisFunc = function(){
+    var thisNation = nations.shift();
 
-  cookies = parseCookies(req.headers.cookie);
+    cookies = parseCookies(req.headers.cookie);
 
-  if(thisNation !== undefined){
-    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
-    nation.save(function(err){
-      if(err === null) {
-        res.render('getNation', {title: "Refounded Nation - "+nation.name, nation: nation.name, action: '/sinkers'});
-      }
-      else if(err.code == 11000){
-        res.redirect('/sinkers');
-        res.end();
-      }
-      else {
-        res.render('getNation', {title: "Refounded Nation Error...", nation: nation.name, err: err.err, action: '/sinkers'});
-      }
-    });
-  }
-  else{
-    res.render('getNation',{title: "No Newly Refounded Nations", nation:'', err: 'No new nations!', action: '/sinkers'});
-  }
+    if(thisNation !== undefined){
+      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
+      nation.save(function(err){
+        if(err === null) {
+          res.render('getNation', {title: "Refounded Nation - "+nation.name, nation: nation.name, action: '/sinkers'});
+        }
+        else if(err.code == 11000){
+          thisFunc();
+        }
+        else {
+          res.render('getNation', {title: "Refounded Nation Error...", nation: nation.name, err: err.err, action: '/sinkers'});
+        }
+      });
+    }
+    else{
+      res.render('getNation',{title: "No Newly Refounded Nations", nation:'', err: 'No new nations!', action: '/sinkers'});
+    }
+  };
+  thisFunc();
 
 });
 
@@ -416,29 +420,36 @@ app.get('/api/newNation', function(req,res){
     return;
   }
 
-  var thisNation = nations.shift();
+  var thisFunc = function(){
+    var thisNation = nations.shift();
 
-  cookies = parseCookies(req.headers.cookie);
+    cookies = parseCookies(req.headers.cookie);
 
-  if(thisNation !== undefined){
-    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
-    nation.save(function(err){
-      if(err === null) {
-        res.json({
-            nation: nation.name
-        });
-      }
-      else if(err.code == 11000){
-        res.redirect('/api/newNation');
-        res.end();
-      }
-      else {
-        res.json({
-          err: err
-        });
-      }
-    });
-  }
+    if(thisNation !== undefined){
+      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
+      nation.save(function(err){
+        if(err === null) {
+          res.json({
+              nation: nation.name
+          });
+        }
+        else if(err.code == 11000){
+          thisFunc();
+        }
+        else {
+          res.json({
+            err: err
+          });
+        }
+      });
+    }
+    else{
+      res.json({
+        err: 'No New Nations'
+      });
+    }
+  };
+  thisFunc();
 });
 
 app.get('/api/sinkerNation', function(req,res){
@@ -447,29 +458,36 @@ app.get('/api/sinkerNation', function(req,res){
     return;
   }
 
-  var thisNation = nations.shift();
+  var thisFunc = function(){
+    var thisNation = nations.shift();
 
-  cookies = parseCookies(req.headers.cookie);
+    cookies = parseCookies(req.headers.cookie);
 
-  if(thisNation !== undefined){
-    var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
-    nation.save(function(err){
-      if(err === null) {
-        res.json({
-            nation: nation.name
-        });
-      }
-      else if(err.code == 11000){
-        res.redirect('/api/sinkerNation');
-        res.end();
-      }
-      else {
-        res.json({
-          err: err
-        });
-      }
-    });
-  }
+    if(thisNation !== undefined){
+      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
+      nation.save(function(err){
+        if(err === null) {
+          res.json({
+              nation: nation.name
+          });
+        }
+        else if(err.code == 11000){
+          thisFunc();
+        }
+        else {
+          res.json({
+            err: err
+          });
+        }
+      });
+    }
+    else{
+      res.json({
+        err: 'No New Nations'
+      });
+    }
+  };
+  thisFunc();
 });
 
 
