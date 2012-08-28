@@ -9,7 +9,9 @@ var express = require('express')
   , ns = require('./helpers/nationstates')
   , mongoose = require('mongoose')
   , db = mongoose.createConnection(process.env.MONGOLAB_URI || 'localhost/test')
-  , crypto = require('crypto');
+  , crypto = require('crypto')
+  , parseCookies = require('./helpers/parseCookies')
+  , resourceful = require('./helpers/resourceful');
 
 
 db.on('error', console.error.bind(console, 'connection error:'));
@@ -264,22 +266,6 @@ t = setInterval(function(){
 /*****************************************************
  * Some functions that should have already been there
  *****************************************************/
-function parseCookies(cookieString){
-  //console.log('COOKIE STRING');
-  //console.log(cookieString);
-
-  if(typeof cookieString !== 'string'){
-    return {};
-  }
-
-  var cookies = {};
-  cookieString.split(';').forEach(function( cookie ) {
-    var parts = cookie.split('=');
-    cookies[ parts[ 0 ].trim() ] = ( parts[ 1 ] || '' ).trim();
-  });
-
-  return cookies;
-};
 
 
 
@@ -477,84 +463,16 @@ app.get('/api/sinkerNation', function(req,res){
 });
 
 
-function requireAdmin(req,res){
-  cookies = parseCookies(req.headers.cookie);
-  //console.log('ADMIN FOUND');
-  //console.log(cookies['admin_username']);
-  //console.log(cookies['admin_password']);
+var admin = require('./controllers/admin');
+resourceful(app, '/admin/users', admin.users);
 
-  if( cookies['admin_username'] == 'admin'
-    && cookies['admin_password'] == 'I_HEART_TD')
-  {
-    return true;
-  }
-  return false;
-}
 
-app.get('/admin/login', function(req,res){
-  res.render('admin/login', {title: "Admin Login"});
-});
-app.post('/admin/login', function(req,res){
-  res.cookie('admin_username', req.param('username', null), {path: '/', httpOnly: true});
-  res.cookie('admin_password', req.param('password', null), {path: '/', httpOnly: true});
+app.get('/admin/login', admin.login.get);
+app.post('/admin/login', admin.login.post);
 
-  res.redirect('/admin');
-});
+app.get('/admin', admin.index);
 
-app.get('/admin', function(req,res){
-  if(!requireAdmin(req,res)){
-    res.redirect('/admin/login');
-    return;
-  }
-
-  res.render('admin/index', {title: "Admin Home"})
-});
-
-app.get('/admin/user/new', function(req,res){
-  if(!requireAdmin(req,res)){
-    res.redirect('/admin/login');
-    return;
-  }
-
-  res.render('admin/user/new', {title: "Create username/password pair"});
-});
-app.post('/admin/user/show', function(req,res){
-  if(!requireAdmin(req,res)){
-    res.redirect('/admin/login');
-    return;
-  }
-
-  var username = req.param('username',null);
-  var password = crypto.createHash('md5').update(username+app.get('salt')).digest('hex');
-
-  res.render('admin/user/show', {title: "username/password keypair", username: username, password: password});
-});
-
-app.get('/admin/nation/makeBad', function(req,res){
-  if(!requireAdmin(req,res)){
-    res.redirect('/admin/login');
-    return;
-  }
-
-  for(var i in nations){
-    (function(thisNation){
-      var badNation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'badNation'});
-      badNation.save(function(err){});
-    })(nations[i]);
-  }
-
-  for(var i in sinkerNations){
-    (function(thisNation){
-      var badNation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'badNation'});
-      badNation.save(function(err){});
-    })(sinkerNations[i]);
-  }
-
-  nations = [];
-  sinkerNations = [];
-
-  res.send('badNations generated from current nation list');
-});
+app.get('/admin/nation/makeBad', admin.nations.makeBad);
 
 
 
