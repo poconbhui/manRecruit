@@ -505,10 +505,6 @@ app.get('/admin/nation/makeBad', admin.nations.makeBad);
 
 
 app.get('/admin/stats/numbers', function(req,res){
-  today = new Date;
-  
-  this_month = new Date(today.getFullYear(), today.getMonth(), 1);
-  last_month = new Date(today.getFullYear(), today.getMonth()-1, 1);
   
   var map = function(){
     var month = (new Date(this.recruitDate).getMonth());
@@ -521,7 +517,9 @@ app.get('/admin/stats/numbers', function(req,res){
     // Make Sunday's day number 7
     d.setDate(d.getDate() + 1 - (d.getDay()||7));
 
-    emit({year: d.getFullYear(), month: d.getMonth(), date: d.getDate(), recruiter: this.recruiter}, {count: 1});
+    if(this.from && this.from != 'badNation'){
+      emit({year: d.getFullYear(), month: d.getMonth(), date: d.getDate(), recruiter: this.recruiter}, {count: 1});
+    }
   };
   
   var reduce = function(key, values){
@@ -542,9 +540,11 @@ app.get('/admin/stats/numbers', function(req,res){
   d1.setDate(d1.getDate() + 1 - (d1.getDay()||7) - 7*4);
 
   // set end date to this weeks Monday
-  d2 = new Date(d1);
-  d2.setDate(d2.getDate() + 7*4);
+  d2 = new Date();
+  d2.setHours(0,0,0);
+  d2.setDate(d2.getDate() + 1 - (d2.getDay()||7));
 
+  console.log('START END END DATES');
   console.log(d1);
   console.log(d2);
   var query = {
@@ -572,7 +572,7 @@ app.get('/admin/stats/numbers', function(req,res){
       list.forEach(function(l){
         console.log(l);
         if(l.date.toString() != currDate.toString()){
-          res.write("\nWeek starting: "+l.date.getDate()+'/'+l.date.getMonth()+'/'+l.date.getFullYear()+"\n");
+          res.write("\nWeek starting: "+ (l.date.getDate()+1) +'/'+ (l.date.getMonth()+1) +'/'+l.date.getFullYear()+"\n");
           currDate = l.date;
           console.log(currDate, l.date);
         }
