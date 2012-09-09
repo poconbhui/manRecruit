@@ -142,6 +142,8 @@ function getNationsList(callback){
       }
 
 
+      // merge all lists together by adding from the top of each list.
+      // this should keep the new list in roughly chronological order
       var merged = [];
       for(var i=0; ltFeeders(i); ++i){
         f = feedersLeft(i);
@@ -150,18 +152,16 @@ function getNationsList(callback){
         }
       }
 
+      // remove nations from newNations from the newly merged list
+      // because these nations will be put at the top.
       newMerged = merged.filter(function(el){
         return rawList['newNations'].indexOf(el) < 0;
       });
-
       merged = rawList['newNations'].concat(newMerged);
 
-      //console.log(merged);
 
-
-      //remove nations already in database
-      //due to either recruiting or badListing
-
+      // remove nations already in database
+      // due to either recruiting or badListing
       Nation.find({'name': { $in: merged } }, function(err,ret){
         for(var e=0; e<ret.length; ++e){
           var i = merged.indexOf(ret[e].name);
@@ -170,6 +170,8 @@ function getNationsList(callback){
           }
         }
  
+        // run the callback of this entire function with the new list
+        // as the argument
         if(typeof callback === 'function'){
           callback(merged);
         }
@@ -182,7 +184,7 @@ function getNationsList(callback){
 function getSinkerNationsList(callback){
   var c = new nseq()
 
-    // run for each feeder
+    // run for each sinker
     .push({
       type: 'parallel',
       range: ns.sinkers,
@@ -230,6 +232,7 @@ function getSinkerNationsList(callback){
           merged.push(rawList[f[j]].shift());
         }
       }
+
       //remove nations already in database
       //due to either recruitment or badListing
 
@@ -339,7 +342,7 @@ app.post('/feeders', function(req,res){
   }
   //console.log('PASSED LOGIN');
 
-  var thisFunc = function(){
+  (function thisFunc(){
     var thisNation = nations.shift();
 
     cookies = parseCookies(req.headers.cookie);
@@ -361,8 +364,7 @@ app.post('/feeders', function(req,res){
     else{
       res.render('getNation',{title: "No New Nations", nation:'', err: 'No new nations!', action: '/feeders'});
     }
-  };
-  thisFunc();
+  })();
 
 });
 
@@ -378,8 +380,8 @@ app.post('/sinkers', function(req,res){
   }
   //console.log('PASSED LOGIN');
 
-  var thisFunc = function(){
-    var thisNation = nations.shift();
+  (function thisFunc(){
+    var thisNation = sinkerNations.shift();
 
     cookies = parseCookies(req.headers.cookie);
 
@@ -400,8 +402,7 @@ app.post('/sinkers', function(req,res){
     else{
       res.render('getNation',{title: "No Newly Refounded Nations", nation:'', err: 'No new nations!', action: '/sinkers'});
     }
-  };
-  thisFunc();
+  })();
 
 });
 
@@ -420,7 +421,7 @@ app.get('/api/newNation', function(req,res){
     return;
   }
 
-  var thisFunc = function(){
+  (function thisFunc(){
     var thisNation = nations.shift();
 
     cookies = parseCookies(req.headers.cookie);
@@ -448,8 +449,8 @@ app.get('/api/newNation', function(req,res){
         err: 'No New Nations'
       });
     }
-  };
-  thisFunc();
+  })();
+
 });
 
 app.get('/api/sinkerNation', function(req,res){
@@ -458,8 +459,8 @@ app.get('/api/sinkerNation', function(req,res){
     return;
   }
 
-  var thisFunc = function(){
-    var thisNation = nations.shift();
+  (function thisFunc(){
+    var thisNation = sinkerNations.shift();
 
     cookies = parseCookies(req.headers.cookie);
 
@@ -486,8 +487,8 @@ app.get('/api/sinkerNation', function(req,res){
         err: 'No New Nations'
       });
     }
-  };
-  thisFunc();
+  })();
+
 });
 
 
@@ -501,6 +502,89 @@ app.post('/admin/login', admin.login.post);
 app.get('/admin', admin.index);
 
 app.get('/admin/nation/makeBad', admin.nations.makeBad);
+
+
+app.get('/admin/stats/numbers', function(req,res){
+  today = new Date;
+  
+  this_month = new Date(today.getFullYear(), today.getMonth(), 1);
+  last_month = new Date(today.getFullYear(), today.getMonth()-1, 1);
+  
+  var map = function(){
+    var month = (new Date(this.recruitDate).getMonth());
+
+    // get week to nearest monday
+    // http://stackoverflow.com/questions/6117814/get-week-of-year-in-javascript-like-in-php
+    var d = new Date(this.recruitDate);
+    d.setHours(0,0,0);
+    // Set to nearest Monday: current date + 1 - current day number
+    // Make Sunday's day number 7
+    d.setDate(d.getDate() + 1 - (d.getDay()||7));
+
+    emit({year: d.getFullYear(), month: d.getMonth(), date: d.getDate(), recruiter: this.recruiter}, {count: 1});
+  };
+  
+  var reduce = function(key, values){
+    var count = 0;
+    values.forEach(function(v){
+      count += v.count;
+    });
+  
+    return {count: count};
+  };
+  
+
+  // set start search date to 4 Mondays ago
+  var d1 = new Date();
+  d1.setHours(0,0,0);
+  // Set to 4 Mondays ago: current date + 1 - current day number - 7*4
+  // Make Sunday's day number 7
+  d1.setDate(d1.getDate() + 1 - (d1.getDay()||7) - 7*4);
+
+  // set end date to this weeks Monday
+  d2 = new Date(d1);
+  d2.setDate(d2.getDate() + 7*4);
+
+  console.log(d1);
+  console.log(d2);
+  var query = {
+    recruitDate: {$gte: d1, $lt: d2}
+  };
+
+  Nation.collection.mapReduce(
+    map.toString(),
+    reduce.toString(),
+    {query: query , out: {inline: 1}},
+    function(err, dbres) {
+  //    if(err) throw err;
+
+      console.log(err);
+      console.log(dbres);
+
+      res.write("Recruitment Numbers\n");
+      res.write("===================\n");
+      var list = [];
+      dbres.forEach(function(r) {
+        list.unshift({date: new Date(r._id.year, r._id.month, r._id.date), recruiter: r._id.recruiter, count: r.value.count});
+      });
+
+      var currDate = new Date(0);
+      list.forEach(function(l){
+        console.log(l);
+        if(l.date.toString() != currDate.toString()){
+          res.write("\nWeek starting: "+l.date.getDate()+'/'+l.date.getMonth()+'/'+l.date.getFullYear()+"\n");
+          currDate = l.date;
+          console.log(currDate, l.date);
+        }
+        res.write(""+l.recruiter);
+        res.write(' - ');
+        res.write(""+l.count);
+        res.write("\n");
+      });
+      res.end();
+    }
+  );
+});
 
 
 

@@ -25,7 +25,7 @@ block headers
       height:5%;
     }
     form.newNation {
-      dosplay:inline;
+      display:inline;
     }
     .newNationName {
       display:inline;
@@ -49,16 +49,22 @@ block content
   table#main
     tr
       td.forms
-        form.newNation(method='post', action=''+action)
-          input(type='submit', value='Get Nation')
+        div
+          a(href="/") Return to index
+          =' '
+          a(href="/logout") Logout
 
-        - if(typeof(nation) != 'undefined')
-          .newNationName
-            | nation: #{nation}
+        div
+          form.newNation(method='post', action=''+action)
+            input(type='submit', value='Get Nation')
 
-        - if(typeof err != 'undefined')
-          .error
-            | error: #{JSON.stringify(err)}
+          - if(typeof(nation) != 'undefined')
+            .newNationName
+              | nation: #{nation}
+
+          - if(typeof err != 'undefined')
+            .error
+              | error: #{JSON.stringify(err)}
 
     tr
       td
