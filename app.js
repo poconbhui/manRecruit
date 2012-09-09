@@ -544,9 +544,6 @@ app.get('/admin/stats/numbers', function(req,res){
   d2.setHours(0,0,0);
   d2.setDate(d2.getDate() + 1 - (d2.getDay()||7));
 
-  console.log('START END END DATES');
-  console.log(d1);
-  console.log(d2);
   var query = {
     recruitDate: {$gte: d1, $lt: d2}
   };
@@ -556,10 +553,10 @@ app.get('/admin/stats/numbers', function(req,res){
     reduce.toString(),
     {query: query , out: {inline: 1}},
     function(err, dbres) {
-  //    if(err) throw err;
+      //if(err) throw err;
 
-      console.log(err);
-      console.log(dbres);
+      //console.log(err);
+      //console.log(dbres);
 
       res.write("Recruitment Numbers\n");
       res.write("===================\n");
@@ -570,11 +567,11 @@ app.get('/admin/stats/numbers', function(req,res){
 
       var currDate = new Date(0);
       list.forEach(function(l){
-        console.log(l);
+        //console.log(l);
         if(l.date.toString() != currDate.toString()){
-          res.write("\nWeek starting: "+ (l.date.getDate()+1) +'/'+ (l.date.getMonth()+1) +'/'+l.date.getFullYear()+"\n");
+          res.write("\nWeek starting: "+ (l.date.getDate()) +'/'+ (l.date.getMonth()+1) +'/'+l.date.getFullYear()+"\n");
           currDate = l.date;
-          console.log(currDate, l.date);
+          //console.log(currDate, l.date);
         }
         res.write(""+l.recruiter);
         res.write(' - ');
