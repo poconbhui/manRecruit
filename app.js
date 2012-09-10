@@ -265,42 +265,102 @@ t = setInterval(function(){
 }, 30*1000);
 
 
+/***********
+ * Sessions
+ * *********/
 
-/*****************************************************
- * Some functions that should have already been there
- *****************************************************/
+var sessions = {};
+
+// run through sessions every 30 minutes and remove expired sessions
+t = setInterval(function(){
+  // set expiration time in minutes
+  var expires = new Date();
+  expires.setMinutes(expires.getMinutes() - 30);
+
+  for(var i in sessions){
+    if(sessions[i].lastActivity < expires){
+      sessions.splice(i,1);
+    }
+  }
+}, 30*1000);
 
 
-
-/********************
- * Logging functions
- ********************/
-function requireLoggedIn(req, res){
-  //console.log('CHECKING COOKIES:');
-
-  cookies = parseCookies(req.headers.cookie);
-  //console.log(cookies);
-
-
+function sessionKeyHash(key){
   var hash = crypto.createHash('md5');
-  hash.update(cookies['username'] + app.get('salt'));
+  hash.update(key + app.get('salt'));
   hash = hash.digest('hex');
 
-  //console.log('md5('+cookies['username']+app.get('salt')+')');
-  //console.log(hash);
+  return hash;
+}
 
-  if(cookies['password'] != hash){
-    //console.log('OH SHIT! NOT LOGGED IN!');
+function setSession(req, res){
+  var key = sessionKeyHash(req.param('username', null));
+
+  if(key){
+    sessions[key] = {lastActivity: new Date(), data: {}};
+    res.cookie('session', key, {path: '/', httpOnly: true});
+
+    return sessions[key].data;
+  }
+  else{
     return false;
   }
+}
 
+function numSessions(){
+  var total = 0;
+  for(var s in sessions){
+    if(sessions.hasOwnProperty(s)){
+      ++total;
+    }
+  }
+  return total;
+}
+
+
+function getSessionKey(req, res){
+  var cookies = parseCookies(req.headers.cookie);
+
+  var key = cookies['session'];
+
+  return key;
+}
+
+function getSession(req, res){
+  var key = getSessionKey(req, res);
+
+  if(sessions[key]){
+    sessions[key].lastActivity = new Date;
+    return sessions[key].data;
+  }
+  else{
+    return false;
+  }
+}
+
+function destroySession(req, res){
+  var key = getSessionKey(req, res);
+
+  delete sessions[key];
   return true;
+}
+ 
+
+// return true if username/password combination correct
+function authenticate(username, password){
+  var hash = crypto.createHash('md5');
+  hash.update(username + app.get('salt'));
+  hash = hash.digest('hex');
+
+  return hash == password;
 }
 
 
 app.get('/',function(req,res){
-  if(!requireLoggedIn(req,res)){
+  var session = getSession(req, res);
+  if(!session){
     res.redirect('/login');
+    res.end();
     return;
   }
 
@@ -313,16 +373,25 @@ app.get('/login', function(req,res){
 });
 
 app.get('/logout', function(req,res){
-  res.cookie('username', null);
-  res.cookie('password', null);
+  destroySession(req, res);
+
+//  res.cookie('username', null);
+//  res.cookie('password', null);
 
   res.redirect('/');
 });
 
 app.post('/login', function(req,res){
-  res.cookie('username', req.param('username', null), {path: '/', httpOnly: true});
-  res.cookie('password', req.param('password', null), {path: '/', httpOnly: true});
+  if(authenticate(req.param('username', null), req.param('password', null))){
+    var session = setSession(req, res);
 
+    session.username = req.param('username',null);
+    session.feederCount = 0;
+    session.sinkerCount = 0;
+  }
+//  res.cookie('username', req.param('username', null), {path: '/', httpOnly: true});
+//  res.cookie('password', req.param('password', null), {path: '/', httpOnly: true});
+//
   res.redirect('/');
 });
 
@@ -336,7 +405,8 @@ app.get('/feeders', function(req,res){
   res.end();
 });
 app.post('/feeders', function(req,res){
-  if(!requireLoggedIn(req,res)){
+  var session = getSession(req, res);
+  if(!session){
     res.redirect('/login');
     return;
   }
@@ -348,21 +418,27 @@ app.post('/feeders', function(req,res){
     cookies = parseCookies(req.headers.cookie);
 
     if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
+      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'feeder'});
       nation.save(function(err){
         if(err === null) {
-          res.render('getNation', {title: "New Nation - "+nation.name, nation: nation.name, action: '/feeders'});
+          session.feederCount += 1;
+
+          console.log(sessions);
+          console.log('LENGTH');
+          console.log(sessions.length);
+
+          res.render('getNation', {title: "New Nation - "+nation.name, nation: nation.name, action: '/feeders', count: session.feederCount, online: numSessions()});
         }
         else if(err.code == 11000){
           thisFunc();
         }
         else {
-          res.render('getNation', {title: "New Nation Error...", nation: nation.name, err: err.err, action: '/feeders'});
+          res.render('getNation', {title: "New Nation Error...", nation: nation.name, err: err.err, action: '/feeders', count: session.feederCount, online: numSessions()});
         }
       });
     }
     else{
-      res.render('getNation',{title: "No New Nations", nation:'', err: 'No new nations!', action: '/feeders'});
+      res.render('getNation',{title: "No New Nations", nation:'', err: 'No new nations!', action: '/feeders', count: session.feederCount, online: numSessions()});
     }
   })();
 
@@ -374,8 +450,10 @@ app.get('/sinkers', function(req,res){
   res.end();
 });
 app.post('/sinkers', function(req,res){
-  if(!requireLoggedIn(req,res)){
+  var session = getSession(req, res);
+  if(!session){
     res.redirect('/login');
+    res.end();
     return;
   }
   //console.log('PASSED LOGIN');
@@ -383,24 +461,24 @@ app.post('/sinkers', function(req,res){
   (function thisFunc(){
     var thisNation = sinkerNations.shift();
 
-    cookies = parseCookies(req.headers.cookie);
-
     if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
+      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'sinker'});
       nation.save(function(err){
         if(err === null) {
-          res.render('getNation', {title: "Refounded Nation - "+nation.name, nation: nation.name, action: '/sinkers'});
+          session.sinkerCount += 1;
+
+          res.render('getNation', {title: "Refounded Nation - "+nation.name, nation: nation.name, action: '/sinkers', count: session.sinkerCount, online: numSessions()});
         }
         else if(err.code == 11000){
           thisFunc();
         }
         else {
-          res.render('getNation', {title: "Refounded Nation Error...", nation: nation.name, err: err.err, action: '/sinkers'});
+          res.render('getNation', {title: "Refounded Nation Error...", nation: nation.name, err: err.err, action: '/sinkers', count: session.sinkerCount, online: numSessions()});
         }
       });
     }
     else{
-      res.render('getNation',{title: "No Newly Refounded Nations", nation:'', err: 'No new nations!', action: '/sinkers'});
+      res.render('getNation',{title: "No Newly Refounded Nations", nation:'', err: 'No new nations!', action: '/sinkers', count: session.sinkerCount, online: numSessions()});
     }
   })();
 
@@ -416,20 +494,22 @@ app.get('/api/currentList', function(req, res){
 });
 
 app.get('/api/newNation', function(req,res){
-  if(!requireLoggedIn(req,res)){
+  var session = getSession(req, res);
+  if(!session){
     res.redirect('/login');
+    res.end();
     return;
   }
 
   (function thisFunc(){
     var thisNation = nations.shift();
 
-    cookies = parseCookies(req.headers.cookie);
-
     if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'feeder'});
+      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'feeder'});
       nation.save(function(err){
         if(err === null) {
+          session.feederCount += 1;
+
           res.json({
               nation: nation.name
           });
@@ -454,20 +534,22 @@ app.get('/api/newNation', function(req,res){
 });
 
 app.get('/api/sinkerNation', function(req,res){
-  if(!requireLoggedIn(req,res)){
+  var session = getSession(req, res);
+  if(!session){
     res.redirect('/login');
+    res.end();
     return;
   }
 
   (function thisFunc(){
     var thisNation = sinkerNations.shift();
 
-    cookies = parseCookies(req.headers.cookie);
-
     if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: cookies['username'], recruitDate: new Date, from: 'sinker'});
+      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'sinker'});
       nation.save(function(err){
         if(err === null) {
+          session.sinkerCount += 1;
+
           res.json({
               nation: nation.name
           });
@@ -498,6 +580,10 @@ resourceful(app, '/admin/users', admin.users);
 
 app.get('/admin/login', admin.login.get);
 app.post('/admin/login', admin.login.post);
+
+app.get('/admin/sessions', function(req, res){
+  res.send(sessions);
+});
 
 app.get('/admin', admin.index);
 

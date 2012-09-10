@@ -24,11 +24,9 @@ block headers
     .forms {
       height:5%;
     }
-    form.newNation {
-      display:inline;
-    }
-    .newNationName {
-      display:inline;
+    .newNation, .newNationName, .error, .count, .online {
+      width: 20%;
+      float: left;
     }
     #nationFrameWrap {
       margin:0;
@@ -65,6 +63,12 @@ block content
           - if(typeof err != 'undefined')
             .error
               | error: #{JSON.stringify(err)}
+
+          .count
+            | count: #{count}
+
+          .online
+            | online: #{online}
 
     tr
       td
