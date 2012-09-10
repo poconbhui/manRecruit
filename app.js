@@ -423,10 +423,6 @@ app.post('/feeders', function(req,res){
         if(err === null) {
           session.feederCount += 1;
 
-          console.log(sessions);
-          console.log('LENGTH');
-          console.log(sessions.length);
-
           res.render('getNation', {title: "New Nation - "+nation.name, nation: nation.name, action: '/feeders', count: session.feederCount, online: numSessions()});
         }
         else if(err.code == 11000){
