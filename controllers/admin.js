@@ -136,19 +136,34 @@ admin.logs.show = function(req,res){
     return;
   }
 
-  res.write("*\n");
-  res.write("* RESULTS FOR \""+req.body.nation+"\"\n");
-  res.write("*\n");
-  res.write("\n");
-
   admin.Nation.find({'name': req.body.nation }, function(err,ret){
   //admin.Nation.find({'from': 'feeder' }, function(err,ret){
+
+    res.write('<!DOCTYPE HTML>');
+
+    res.write('<html>');
+    res.write(  '<head>');
+    res.write(    '<title>Nation Logs</title>');
+    res.write(  '</head>');
+    res.write('<body>');
+    res.write('<pre>');
+    res.write("*\n");
+    res.write("* RESULTS FOR \""+req.body.nation+"\"\n");
+    res.write("*\n");
+    res.write("\n");
+
     res.write("FOUND "+ret.length+" RESULTS\n");
     res.write("\n");
 
     for(var e in ret){
       res.write(ret[e]+"\n");
     }
+
+    res.write('</pre>');
+
+    res.write('<a href="/admin/logs">Find Another Nation</a>');
+    res.write('</body>');
+    res.write('</html>');
 
     res.end();
   });
