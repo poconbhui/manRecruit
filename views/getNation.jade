@@ -8,7 +8,7 @@ block headers
       -moz-box-sizing:border-box;
       -webkit-box-sizing:border-box;
     }
-    body, html, #main {
+    body, html {
       width:100%;
       height:100%;
       margin:0;
@@ -22,7 +22,7 @@ block headers
       border:none;
     }
     .forms {
-      height:75px;
+      height:15%;
     }
     .newNation, .newNationName, .error, .count, .online {
       width: 20%;
@@ -31,7 +31,7 @@ block headers
     #nationFrameWrap {
       margin:0;
       padding:0;
-      height:100%;
+      height:85%;
       width:100%;
       border:none;
     }
@@ -44,33 +44,29 @@ block headers
     }
 
 block content
-  table#main
-    tr
-      td.forms
-        div
-          a(href="/") Return to index
-          =' '
-          a(href="/logout") Logout
+  .forms
+    div
+      a(href="/") Return to index
+      =' '
+      a(href="/logout") Logout
 
-        div
-          form.newNation(method='post', action=''+action)
-            input(type='submit', value='Get Nation')
+    div
+      form.newNation(method='post', action=''+action)
+        input(type='submit', value='Get Nation')
 
-          - if(typeof(nation) != 'undefined')
-            .newNationName
-              | nation: #{nation}
+      - if(typeof(nation) != 'undefined')
+        .newNationName
+          | nation: #{nation}
 
-          - if(typeof err != 'undefined')
-            .error
-              | error: #{JSON.stringify(err)}
+      - if(typeof err != 'undefined')
+        .error
+          | error: #{JSON.stringify(err)}
 
-          .count
-            | count: #{count}
+      .count
+        | count: #{count}
 
-          .online
-            | online: #{online}
+      .online
+        | online: #{online}
 
-    tr
-      td
-        #nationFrameWrap
-          iframe#nationFrame(src="http://www.nationstates.net/nation=#{nation}")
+  #nationFrameWrap
+    iframe#nationFrame(src="http://www.nationstates.net/nation=#{nation}")

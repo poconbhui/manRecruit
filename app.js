@@ -571,6 +571,7 @@ app.get('/api/sinkerNation', function(req,res){
 
 
 var admin = require('./controllers/admin');
+admin.Nation = Nation;
 resourceful(app, '/admin/users', admin.users);
 
 
@@ -664,6 +665,11 @@ app.get('/admin/stats/numbers', function(req,res){
     }
   );
 });
+
+
+app.get('/admin/logs', admin.logs.index)
+app.post('/admin/logs', admin.logs.show)
+  
 
 
 

@@ -106,4 +106,57 @@ admin.nations.makeBad = function(req,res){
   res.send('badNations generated from current nation list');
 };
 
+
+admin.logs = {}
+admin.logs.index = function(req,res){
+  if(!requireAdmin(req,res)){
+    res.redirect('/admin/login');
+    return;
+  }
+
+  res.write('<!DOCTYPE HTML>');
+  res.write('<html>');
+  res.write(  '<head>');
+  res.write(    '<title>Nation Logs</title>');
+  res.write(  '</head>');
+  res.write('<body>');
+  res.write(  '<h1>Nation Logs</h1>');
+  res.write(  '<form action="/admin/logs" method="post">');
+  res.write(    '<label for="nation">Nation:</label>');
+  res.write(    '<input type="text" name="nation" id="nation_input" />');
+  res.write(    '<input type="submit" value="Search Logs" />');
+  res.write(  '</form>');
+  res.write('</body>');
+  res.end();
+}
+
+admin.logs.show = function(req,res){
+  if(!requireAdmin(req,res)){
+    res.redirect('/admin/login');
+    return;
+  }
+
+  res.write("*\n");
+  res.write("* RESULTS FOR \""+req.body.nation+"\"\n");
+  res.write("*\n");
+  res.write("\n");
+
+  admin.Nation.find({'name': req.body.nation }, function(err,ret){
+  //admin.Nation.find({'from': 'feeder' }, function(err,ret){
+    res.write("FOUND "+ret.length+" RESULTS\n");
+    res.write("\n");
+
+    for(var e in ret){
+      res.write(ret[e]+"\n");
+    }
+
+    res.end();
+  });
+}
+
+
+admin.Nation = {};
+
+
+
 module.exports = admin;
