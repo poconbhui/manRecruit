@@ -141,7 +141,7 @@ var mongodb = require('mongodb');
 var nationDB = null;
 var uri = process.env.MONGOLAB_URI || 'mongodb://127.0.0.1:27017/nation_db';
 
-mongodb.MongoClient.connect(uri, {'safe': false}, function(error, db){
+mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
   if(error){
     console.log('ERROR CONNECTING TO MONGODB: ',error);
     return;
@@ -215,6 +215,8 @@ var Nations = function(region_in){
 
       data._id = data.nation;
       nation_collection.insert(data, {w:1}, function(error,result){
+        console.log('INSERTED ERROR: ',error);
+        console.log('INSERTED RESULT: ',result);
         if(typeof callback == 'function'){
           callback(error,result);
         }
