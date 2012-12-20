@@ -220,10 +220,7 @@ var Nations = function(region_in){
       }
 
       //data._id = data.name;
-      console.log('INSERTED ATTEMPT: ',data);
       nation_collection.insert(data, {w:1}, function(error,result){
-        console.log('INSERTED ERROR: ',error);
-        console.log('INSERTED RESULT: ',result);
         if(typeof callback == 'function'){
           callback(error,result);
         }
