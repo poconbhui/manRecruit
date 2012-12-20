@@ -85,50 +85,52 @@ function updateNations(oldNations, oldBadNations, callback){
 
 
 // Set nations to be updated regularly
-// Make initial results bad, and update from there
-updateNations([],[], function(newNations, newBadNations){
-  if('development' == process.env.NODE_ENV){
-    // For development, don't dump initial results
-    recruitable = newNations;
-    unrecruitable = newBadNations;
-  }
-  else{
-    // Production: find nations from initial results that have
-    // already been recruited and set them as unrecruitable
-    nationDB.collection('nations',function(error,nation_collection){
-      nation_collection.find({nation:{$in:newNations}},{fields:{nation:1}})
-        .toArray(function(error,result){
-          result = _.map(result, function(value){
-            return value.nation;
+function runUpdateNationsLoop(){
+  // Make initial results bad, and update from there
+  updateNations([],[], function(newNations, newBadNations){
+    if('development' == process.env.NODE_ENV){
+      // For development, don't dump initial results
+      recruitable = newNations;
+      unrecruitable = newBadNations;
+    }
+    else{
+      // Production: find nations from initial results that have
+      // already been recruited and set them as unrecruitable
+      nationDB.collection('nations',function(error,nation_collection){
+        nation_collection.find({nation:{$in:newNations}},{fields:{nation:1}})
+          .toArray(function(error,result){
+            result = _.map(result, function(value){
+              return value.nation;
+            });
+
+            recruitable   = _.difference(newNations, result);
+            unrecruitable = _.union(newBadNations, result);
           });
+      });
+    }
 
-          recruitable   = _.difference(newNations, result);
-          unrecruitable = _.union(newBadNations, result);
-        });
-    });
-  }
+    // Run update every 30 seconds
+    setInterval(function(){
 
-  // Run update every 30 seconds
-  setInterval(function(){
+      var oldNations = recruitable;
+      recruitable = [];
 
-    var oldNations = recruitable;
-    recruitable = [];
+      var oldBadNations = unrecruitable;
+      unrecruitable = [];
 
-    var oldBadNations = unrecruitable;
-    unrecruitable = [];
+      updateNations(
+        oldNations,
+        oldBadNations,
+        function(newNations, newBadNations){
+          recruitable = _.difference(newNations, unrecruitable);
+          unrecruitable = _.union(unrecruitable, newBadNations);
+        }
+      );
 
-    updateNations(
-      oldNations,
-      oldBadNations,
-      function(newNations, newBadNations){
-        recruitable = _.difference(newNations, unrecruitable);
-        unrecruitable = _.union(unrecruitable, newBadNations);
-      }
-    );
+    }, 30*1000);
 
-  }, 30*1000);
-
-});
+  });
+}
 
 
 
@@ -146,6 +148,8 @@ mongodb.MongoClient.connect(uri, {'safe': false}, function(error, db){
   }
 
   nationDB = db;
+
+  runUpdateNationsLoop();
 });
 
 
