@@ -323,7 +323,13 @@ var Nations = function(region_in){
               callback(null, {'nation':nationName, 'status': 'not found'});
             }
             else{
-              nation.status = 'recruited';
+              if(!nation){
+                nation = {nation: nationName, status: 'not found'};
+              }
+              else{
+                nation.status = 'recruited';
+              }
+
               callback(null, nation);
             }
           }
