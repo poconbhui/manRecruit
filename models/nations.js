@@ -213,7 +213,7 @@ var Nations = function(region_in){
         return false;
       }
 
-      data._id = data.nation;
+      //data._id = data.nation;
       nation_collection.insert(data, {w:1}, function(error,result){
         console.log('INSERTED ATTEMPT: ',data);
         console.log('INSERTED ERROR: ',error);
