@@ -87,11 +87,26 @@ function updateNations(oldNations, oldBadNations, callback){
 // Set nations to be updated regularly
 // Make initial results bad, and update from there
 updateNations([],[], function(newNations, newBadNations){
-    //  DEBUG, actually want lists populated
+  if('development' == process.env.NODE_ENV){
+    // For development, don't dump initial results
     recruitable = newNations;
     unrecruitable = newBadNations;
-//  nations = [];
-//  badNations = _.union(newNations, newBadNations);
+  }
+  else{
+    // Production: find nations from initial results that have
+    // already been recruited and set them as unrecruitable
+    nationDB.collection('nations',function(error,nation_collection){
+      nation_collection.find({nation:{$in:newNations}},{fields:{nation:1}})
+        .toArray(function(error,result){
+          result = _.map(result, function(value){
+            return value.nation;
+          });
+
+          recruitable   = _.difference(newNations, result);
+          unrecruitable = _.union(newBadNations, result);
+        });
+    });
+  }
 
   // Run update every 30 seconds
   setInterval(function(){
@@ -106,7 +121,7 @@ updateNations([],[], function(newNations, newBadNations){
       oldNations,
       oldBadNations,
       function(newNations, newBadNations){
-        recruitable = newNations;
+        recruitable = _.difference(newNations, unrecruitable);
         unrecruitable = _.union(unrecruitable, newBadNations);
       }
     );
@@ -121,23 +136,18 @@ updateNations([],[], function(newNations, newBadNations){
 var mongodb = require('mongodb');
 
 
-var nationDB;
-var uri = '127.0.0.1:27017/nation_db'
+var nationDB = null;
+var uri = 'mongodb://127.0.0.1:27017/nation_db'
 
-//mongodb
+mongodb.MongoClient.connect(uri, {'safe': false}, function(error, db){
+  if(error){
+    console.log('ERROR CONNECTING TO MONGODB: ',error);
+    return;
+  }
 
-//var host = '127.0.0.1';
-//var port = 27017;
-//var nationDB = new mongodb.Db(
-//  'nation_db',
-//  new mongodb.Server(
-//    host,
-//    port
-//  ),
-//  {'safe':false}
-//);
+  nationDB = db;
+});
 
-nationDB.open(function(){});
 
 
 var Nations = function(region_in){
@@ -199,8 +209,12 @@ var Nations = function(region_in){
         return false;
       }
 
-      data._id = mongodb.ObjectId(data.nation);
-      nation_collection.insert(data, {}, callback)
+      data._id = data.nation;
+      nation_collection.insert(data, {w:1}, function(error,result){
+        if(typeof callback == 'function'){
+          callback(error,result);
+        }
+      });
     });
   };
 
@@ -321,28 +335,6 @@ var Nations = function(region_in){
 
 };
 
-
-/*
-setTimeout(function(){
-  console.log("TRYING");
-  var N = new Nations('tni');
-  N.addRecruited({'nation':'dumbbum','recruiter':'TD'},function(error,result){
-    console.log("RAN");
-    console.log("ERROR: ",error);
-    console.log("RESULT: ",result);
-  });
-  nationDB.collection('nations',function(err,coll){
-    coll.find({'recruiter':'TD','date':{$lt:new Date(new Date()-5*60*1000)}}).toArray(function(err, doc){
-      console.log("FIND ERR: ",err);
-      console.log("FOND DOC: ",doc);
-    });
-  });
-  N.getRecruitmentNumbers(function(collection){
-    console.log("AFTER: ",collection);
-  });
-
-},1*1000);
-*/
 
 
 module.exports = Nations;

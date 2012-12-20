@@ -12,8 +12,6 @@ var sessionController = {
     res.locals.message = 'User Login';
     res.locals.action  = '/login';
 
-    console.log(res.locals);
-
     res.render('sessions/new.html.jade');
   },
 
