@@ -50,7 +50,7 @@ var nationController = {
     // If "sent" button was pressed
     if(req.body.sent){
       Nations.addRecruited({
-        'nation':req.body.nation,
+        'name':req.body.nation,
         'recruiter':req.session.get('username')
       });
     }

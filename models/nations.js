@@ -97,10 +97,10 @@ function runUpdateNationsLoop(){
       // Production: find nations from initial results that have
       // already been recruited and set them as unrecruitable
       nationDB.collection('nations',function(error,nation_collection){
-        nation_collection.find({nation:{$in:newNations}},{fields:{nation:1}})
+        nation_collection.find({name:{$in:newNations}},{fields:{name:1}})
           .toArray(function(error,result){
             result = _.map(result, function(value){
-              return value.nation;
+              return value.name;
             });
 
             recruitable   = _.difference(newNations, result);
@@ -213,7 +213,7 @@ var Nations = function(region_in){
         return false;
       }
 
-      //data._id = data.nation;
+      //data._id = data.name;
       console.log('INSERTED ATTEMPT: ',data);
       nation_collection.insert(data, {w:1}, function(error,result){
         console.log('INSERTED ERROR: ',error);
@@ -260,7 +260,7 @@ var Nations = function(region_in){
 
     var map = function(){
       var doc = this;
-      if(doc.date && doc.recruiter && doc.nation){
+      if(doc.date && doc.recruiter && doc.name){
 
         // Get date in doc
         var date = new Date(doc.date);
@@ -318,20 +318,20 @@ var Nations = function(region_in){
     var error = null;
 
     if(_.contains(recruitable, nationName)){
-      callback(null, {'nation': nationName, 'status': 'recruitable'});
+      callback(null, {'name': nationName, 'status': 'recruitable'});
       return true;
     }
     else{
       getNationCollection(function(error, nation_collection){
         nation_collection.findOne(
-          {'nation':nationName},
+          {'name':nationName},
           function(error, nation){
             if(error){
-              callback(null, {'nation':nationName, 'status': 'not found'});
+              callback(null, {'name':nationName, 'status': 'not found'});
             }
             else{
               if(!nation){
-                nation = {nation: nationName, status: 'not found'};
+                nation = {name: nationName, status: 'not found'};
               }
               else{
                 nation.status = 'recruited';
