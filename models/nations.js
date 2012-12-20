@@ -137,7 +137,7 @@ var mongodb = require('mongodb');
 
 
 var nationDB = null;
-var uri = 'mongodb://127.0.0.1:27017/nation_db'
+var uri = process.env.MONGOLAB_URI || 'mongodb://127.0.0.1:27017/nation_db';
 
 mongodb.MongoClient.connect(uri, {'safe': false}, function(error, db){
   if(error){
