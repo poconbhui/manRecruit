@@ -120,16 +120,22 @@ updateNations([],[], function(newNations, newBadNations){
 // Define MongoDB Connections here
 var mongodb = require('mongodb');
 
-var host = '127.0.0.1';
-var port = 27017;
-var nationDB = new mongodb.Db(
-  'nation_db',
-  new mongodb.Server(
-    host,
-    port
-  ),
-  {'safe':false}
-);
+
+var nationDB;
+var uri = '127.0.0.1:27017/nation_db'
+
+//mongodb
+
+//var host = '127.0.0.1';
+//var port = 27017;
+//var nationDB = new mongodb.Db(
+//  'nation_db',
+//  new mongodb.Server(
+//    host,
+//    port
+//  ),
+//  {'safe':false}
+//);
 
 nationDB.open(function(){});
 
@@ -193,7 +199,7 @@ var Nations = function(region_in){
         return false;
       }
 
-      data._id = data.nation;
+      data._id = mongodb.ObjectId(data.nation);
       nation_collection.insert(data, {}, callback)
     });
   };

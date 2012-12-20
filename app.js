@@ -14,6 +14,8 @@ app.set('views', __dirname+'/views');
 app.engine('jade', require('jade').__express);
 app.locals._ = _;
 
+var port = process.env.PORT || 3000;
+
 
 if('development' == app.get('env')){
   app.use(function(req,res,next){
@@ -88,4 +90,4 @@ app.post('/users', middleware, userController.create);
 app.get( '/users/:user', middleware, userController.show);
 
 
-app.listen(3000);
+app.listen(port);
