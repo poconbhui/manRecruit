@@ -45,6 +45,7 @@ html
             a(href="/nations/new") Check again
 
           
-    div#NSdiv
-      iframe(src="http://www.nationstates.net/nation=#{offeredNation}")
-
+    - if(offeredNation)
+        div#NSdiv
+          iframe(src="http://www.nationstates.net/nation=#{offeredNation}")
+    - }
