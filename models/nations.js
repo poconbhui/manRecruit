@@ -90,7 +90,7 @@ function runUpdateNationsLoop(){
   updateNations([],[], function(newNations, newBadNations){
     if('development' == process.env.NODE_ENV){
       // For development, don't dump initial results
-      recruitable = newNations;
+      recruitable = _.uniq(newNations);
       unrecruitable = newBadNations;
     }
     else{
@@ -103,7 +103,10 @@ function runUpdateNationsLoop(){
               return value.name;
             });
 
-            recruitable   = _.difference(newNations, result);
+            recruitable   = _.chain(newNations)
+              .difference(result)
+              .uniq(recruitable)
+              .value();
             unrecruitable = _.union(newBadNations, result);
           });
       });
@@ -122,7 +125,10 @@ function runUpdateNationsLoop(){
         oldNations,
         oldBadNations,
         function(newNations, newBadNations){
-          recruitable = _.difference(newNations, unrecruitable);
+          recruitable = _.chain(newNations)
+            .difference(unrecruitable)
+            .uniq(recruitable)
+            .value();
           unrecruitable = _.union(unrecruitable, newBadNations);
         }
       );
