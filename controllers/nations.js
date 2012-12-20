@@ -21,6 +21,10 @@ var nationController = {
     res.locals.offeredNation = Nations.popFirstRecruitable();
     res.locals.recruitableCount = Nations.countRecruitable();
 
+    // Not the best option, but this should hopefully help
+    // with the double nation problem
+    Nations.addUnrecruitable(req.body.nation);
+
     Nations.getRecruitmentNumbers(
       req.session.get('username'),
       function(error, collection){
@@ -45,18 +49,25 @@ var nationController = {
 
   // Add recruitable nation data to database if recruited
   'create': function(req, res){
-    Nations.addUnrecruitable(req.body.nation);
 
     // If "sent" button was pressed
     if(req.body.sent){
-      Nations.addRecruited({
-        'name':req.body.nation,
-        'recruiter':req.session.get('username')
-      });
+      // Mark nation as recruited
+      Nations.addRecruited(
+        {
+          'name':req.body.nation,
+          'recruiter':req.session.get('username')
+        },
+        function(error,result){
+          // Give recruiter new nation
+          res.redirect('/nations/new');
+        }
+      );
     }
-
-    // Give recruiter a new nation
-    res.redirect('/nations/new');
+    else{
+      // Give recruiter a new nation
+      res.redirect('/nations/new');
+    }
   },
 
 
