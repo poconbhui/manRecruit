@@ -1,0 +1,11 @@
+doctype 5
+html(lang="en")
+  body
+    a(href='/nations/new') Start Recruiting!
+
+    // Recruitable Nations
+    h2 Recruitable Nations: #{recruitableCount}
+    ul
+      - _.forEach(recruitableList, function(nation){
+          li= nation
+      - });

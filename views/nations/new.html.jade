@@ -1,0 +1,50 @@
+doctype 5
+html
+  head
+    style
+      body,html {height:100%; width:100%;padding:0;margin:0;}
+      div{
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+        padding:0;
+        margin:0;
+        overflow:hidden;
+      }
+      #controls {height:20%;width:100%; padding:10px}
+      #NSdiv {height:80%;width:100%}
+      iframe {height:100%; width:100%; padding:0; border:none; margin:0;}
+    script(
+      type='text/javascript',
+      src='https://ajax.googleapis.com/ajax/libs/jquery/1.4.4/jquery.min.js'
+    )
+    script(type="text/javascript")
+      $(document).ready(function(){
+        var value = $('input[name="nation"]').val();
+      });
+
+  body
+    div#controls
+      div Recruitable #{recruitableCount}
+      div Recruited #{recruitedCount}
+      - if(offeredNation)
+          form(action="/nations", method="post")
+            input(type="hidden", name="nation", value="#{offeredNation}")
+            input(
+              type="submit",
+              name="sent",
+              value="Sent TG to #{offeredNation}"
+            )
+            input(
+              type="submit",
+              name="ignored",
+              value="Ignored #{offeredNation}"
+            )
+      - else
+          p No nations available! 
+            a(href="/nations/new") Check again
+
+          
+    div#NSdiv
+      iframe(src="http://www.nationstates.net/nation=#{offeredNation}")
+

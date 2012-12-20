@@ -1,14 +1,16 @@
 {
-  "name": "application-name",
-  "version": "0.0.1",
+  "name": "manRecruit",
+  "version": "0.2.0",
   "scripts": {
-    "start": "node app"
+    "start": "node app.js"
   },
   "dependencies": {
-    "express": "3.0.0rc3",
-    "jade": "*",
-    "xml2js": "0.1",
-    "mongoose": "*"
+    "express": "3.0.4",
+    "jade": "0.27.7",
+    "xml2js": "0.2.2",
+    "underscore": "1.4.3",
+    "longjohn": "0.0.4",
+    "mongodb": "1.2.5"
   },
   "engines": {
     "node": "0.8.x",

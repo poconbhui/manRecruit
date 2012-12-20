@@ -1,0 +1,16 @@
+doctype 5
+html
+  body
+    div= message
+    form(action='#{action}', method='post')
+      div Username: 
+        input(type='text', name='user[name]')
+      div Password: 
+        input(type='text', name='user[password]')
+      input(type='submit', value='Login')
+
+    - if('development' == environment){
+        pre
+          | USERNAME: #{username}
+          | PASSWORD: #{password}
+    - }

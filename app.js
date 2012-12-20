@@ -1,683 +1,91 @@
-/**********************
- * Module dependencies
- **********************/
+var express      = require('express');
+var app          = express();
+var _            = require('underscore');
 
-var express = require('express')
-  , http = require('http')
-  , path = require('path')
-  , nseq = require('./helpers/nseq')
-  , ns = require('./helpers/nationstates')
-  , mongoose = require('mongoose')
-  , db = mongoose.createConnection(process.env.MONGOLAB_URI || 'localhost/test')
-  , crypto = require('crypto')
-  , parseCookies = require('./helpers/parseCookies')
-  , resourceful = require('./helpers/resourceful');
+require('longjohn');
 
 
-db.on('error', console.error.bind(console, 'connection error:'));
-db.once('open', function () {
-  console.log('Mongoose connected to MongoDB database at ' + db.user + ':' + db.pass + '@' + db.host + ':' + db.port + '/' + db.name);
+/***
+ * Define Express specifics
+ ***/
+app.use(express.bodyParser());
+app.use(express.cookieParser('secret'));
+app.set('views', __dirname+'/views');
+app.engine('jade', require('jade').__express);
+app.locals._ = _;
 
-  console.log('Populating feeder nations');
-  getNationsList(function(nationArr){
-    nations = nationArr;
+
+if('development' == app.get('env')){
+  app.use(function(req,res,next){
+    res.locals.environment = 'development';
+    next();
   });
-  console.log('Populating sinker nations');
-  getSinkerNationsList(function(nationArr){
-    sinkerNations = nationArr;
+}
+else if('production' == app.get('env')){
+  app.use(function(req,res,next){
+    res.locals.environment = 'production';
+    next();
   });
-});
-
-
-
-/*********************
- * Nation model setup
- *********************/
-
-
-var nationSchema = new mongoose.Schema({
-    name: { type: String, index: { unique: true } }
-  , recruiter: String
-  , recruitDate: Date
-  , from: String
-});
-
-var Nation = db.model('Nation', nationSchema);
-
-
-
-/********************
- * App configuration
- ********************/
-
-var app = express();
-
-app.configure(function(){
-  app.set('port', process.env.PORT || 3000);
-  app.set('views', __dirname + '/views');
-  app.set('view engine', 'jade');
-  app.use(express.favicon());
-  app.use(express.logger('dev'));
-  app.use(express.bodyParser());
-  app.use(express.methodOverride());
-  app.use(express.cookieParser());
-  app.use(app.router);
-  app.use(express.static(path.join(__dirname, 'public')));
-
-
-  app.set('salt', 'pw');
-});
-
-app.configure('development', function(){
-  app.use(express.errorHandler());
-  app.locals.pretty = true;
-});
-
-var port = process.env.PORT || 5000;
-app.set('port', port);
-
-
-
-/********************************
- * Nation generation and storage
- ********************************/
-
-//the all important list of recruitable nations
-var nations = [];
-
-var sinkerNations = [];
-
-function getNationsList(callback){
-  var c = new nseq();
-
-    // push feeders into pareach
-
-    // run for each feeder
-    c.push({
-      type: 'parallel',
-      range: ns.feeders,
-      func: function(index, feeder, c){
-        ns.api("region="+feeder+"&q=nations&v=3", function(res){
-          r = res['NATIONS'];
-          c.vals[feeder] = r.split(':');
-          c.done();
-        });
-      }
-    })
-
-    // get new nations
-    .push(function(c){
-      ns.api("q=newnations", function(res) {
-        r = res['NEWNATIONS'];
-        c.vals['newNations'] = r.split(',');
-        c.done();
-      });
-    })
-
-    // stuff it all together
-    //merge nation arrays
-    .push(function(c){
-      //console.log('SEQ RETURN');
-      //console.log(this.vars);
-
-      var rawList = c.vals;
-
-      function ltFeeders(i){
-        for(var k=0; k<ns.feeders.length; ++k){
-          if(i<rawList[ns.feeders[k]].length){
-            return true;
-          }
-        }
-        return false;
-      }
-      function feedersLeft(i){
-        var ret = [];
-
-        for(var k=0; k<ns.feeders.length; ++k){
-          if(i<rawList[ns.feeders[k]].length){
-            ret.push(ns.feeders[k]);
-          }
-        }
-        return ret;
-      }
-
-
-      // merge all lists together by adding from the top of each list.
-      // this should keep the new list in roughly chronological order
-      var merged = [];
-      for(var i=0; ltFeeders(i); ++i){
-        f = feedersLeft(i);
-        for (var j=0; j<f.length; ++j){
-          merged.push(rawList[f[j]].shift());
-        }
-      }
-
-      // remove nations from newNations from the newly merged list
-      // because these nations will be put at the top.
-      newMerged = merged.filter(function(el){
-        return rawList['newNations'].indexOf(el) < 0;
-      });
-      merged = rawList['newNations'].concat(newMerged);
-
-
-      // remove nations already in database
-      // due to either recruiting or badListing
-      Nation.find({'name': { $in: merged } }, function(err,ret){
-        for(var e=0; e<ret.length; ++e){
-          var i = merged.indexOf(ret[e].name);
-          if(i>=0){
-            merged.splice(i,1);
-          }
-        }
- 
-        // run the callback of this entire function with the new list
-        // as the argument
-        if(typeof callback === 'function'){
-          callback(merged);
-        }
-      });
-
-    })
-    .exec();
-}
-
-function getSinkerNationsList(callback){
-  var c = new nseq()
-
-    // run for each sinker
-    .push({
-      type: 'parallel',
-      range: ns.sinkers,
-      func: function(index, sinker, c){
-        ns.api("region="+sinker+"&q=nations&v=3", function(res){
-          r = res['NATIONS'];
-          c.vals[sinker] = r.split(':');
-          c.done();
-        });
-      }
-    })
-
-    // stuff it all together
-    //merge nation arrays
-    .push(function(c){
-      //console.log('SEQ RETURN');
-      //console.log(this.vars);
-
-      var rawList = c.vals;
-
-      function ltSinkers(i){
-        for(var k=0; k<ns.sinkers.length; ++k){
-          if(i<rawList[ns.sinkers[k]].length){
-            return true;
-          }
-        }
-        return false;
-      }
-      function sinkersLeft(i){
-        var ret = [];
-
-        for(var k=0; k<ns.sinkers.length; ++k){
-          if(i<rawList[ns.sinkers[k]].length){
-            ret.push(ns.sinkers[k]);
-          }
-        }
-        return ret;
-      }
-
-
-      var merged = [];
-      for(var i=0; ltSinkers(i); ++i){
-        f = sinkersLeft(i);
-        for (var j=0; j<f.length; ++j){
-          merged.push(rawList[f[j]].shift());
-        }
-      }
-
-      //remove nations already in database
-      //due to either recruitment or badListing
-
-      Nation.find({'name': { $in: merged } }, function(err,ret){
-        for(var e=0; e<ret.length; ++e){
-          var i = merged.indexOf(ret[e].name);
-          if(i>=0){
-            merged.splice(i,1);
-          }
-        }
- 
-        if(typeof callback === 'function'){
-          callback(merged);
-        }
-      });
-
-    })
-    .exec();
 }
 
 
 
-t = setInterval(function(){
-  getNationsList(function(nationArr){
-    nations = nationArr;
-  });
-  getSinkerNationsList(function(nationArr){
-    sinkerNations = nationArr;
-  });
-}, 30*1000);
-
-
-/***********
- * Sessions
- * *********/
-
-var sessions = {};
-
-// run through sessions every 30 minutes and remove expired sessions
-t = setInterval(function(){
-  // set expiration time in minutes
-  var expires = new Date();
-  expires.setMinutes(expires.getMinutes() - 30);
-
-  for(var i in sessions){
-    if(sessions[i].lastActivity < expires){
-      sessions.splice(i,1);
-    }
-  }
-}, 30*1000);
-
-
-function sessionKeyHash(key){
-  var hash = crypto.createHash('md5');
-  hash.update(key + app.get('salt'));
-  hash = hash.digest('hex');
-
-  return hash;
-}
-
-function setSession(req, res){
-  var key = sessionKeyHash(req.param('username', null));
-
-  if(key){
-    sessions[key] = {lastActivity: new Date(), data: {}};
-    res.cookie('session', key, {path: '/', httpOnly: true});
-
-    return sessions[key].data;
-  }
-  else{
-    return false;
-  }
-}
-
-function numSessions(){
-  var total = 0;
-  for(var s in sessions){
-    if(sessions.hasOwnProperty(s)){
-      ++total;
-    }
-  }
-  return total;
-}
-
-
-function getSessionKey(req, res){
-  var cookies = parseCookies(req.headers.cookie);
-
-  var key = cookies['session'];
-
-  return key;
-}
-
-function getSession(req, res){
-  var key = getSessionKey(req, res);
-
-  if(sessions[key]){
-    sessions[key].lastActivity = new Date;
-    return sessions[key].data;
-  }
-  else{
-    return false;
-  }
-}
-
-function destroySession(req, res){
-  var key = getSessionKey(req, res);
-
-  delete sessions[key];
-  return true;
-}
- 
-
-// return true if username/password combination correct
-function authenticate(username, password){
-  var hash = crypto.createHash('md5');
-  hash.update(username + app.get('salt'));
-  hash = hash.digest('hex');
-
-  return hash == password;
-}
-
-
-app.get('/',function(req,res){
-  var session = getSession(req, res);
-  if(!session){
-    res.redirect('/login');
-    res.end();
-    return;
-  }
-
-  res.render('index', {title: "manRecruit Home"});
-});
-
-
-app.get('/login', function(req,res){
-  res.render('login', {title: "Login to manRecruit"});
-});
-
-app.get('/logout', function(req,res){
-  destroySession(req, res);
-
-//  res.cookie('username', null);
-//  res.cookie('password', null);
-
-  res.redirect('/');
-});
-
-app.post('/login', function(req,res){
-  if(authenticate(req.param('username', null), req.param('password', null))){
-    var session = setSession(req, res);
-
-    session.username = req.param('username',null);
-    session.feederCount = 0;
-    session.sinkerCount = 0;
-  }
-//  res.cookie('username', req.param('username', null), {path: '/', httpOnly: true});
-//  res.cookie('password', req.param('password', null), {path: '/', httpOnly: true});
-//
-  res.redirect('/');
-});
-
-
-
-/***************************************
- * Nation getting and logging functions
- ***************************************/
-app.get('/feeders', function(req,res){
-  res.redirect('/');
-  res.end();
-});
-app.post('/feeders', function(req,res){
-  var session = getSession(req, res);
-  if(!session){
-    res.redirect('/login');
-    return;
-  }
-  //console.log('PASSED LOGIN');
-
-  (function thisFunc(){
-    var thisNation = nations.shift();
-
-    cookies = parseCookies(req.headers.cookie);
-
-    if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'feeder'});
-      nation.save(function(err){
-        if(err === null) {
-          session.feederCount += 1;
-
-          res.render('getNation', {title: "New Nation - "+nation.name, nation: nation.name, action: '/feeders', count: session.feederCount, online: numSessions()});
-        }
-        else if(err.code == 11000){
-          thisFunc();
-        }
-        else {
-          res.render('getNation', {title: "New Nation Error...", nation: nation.name, err: err.err, action: '/feeders', count: session.feederCount, online: numSessions()});
-        }
-      });
-    }
-    else{
-      res.render('getNation',{title: "No New Nations", nation:'', err: 'No new nations!', action: '/feeders', count: session.feederCount, online: numSessions()});
-    }
-  })();
-
-});
-
-
-app.get('/sinkers', function(req,res){
-  res.redirect('/');
-  res.end();
-});
-app.post('/sinkers', function(req,res){
-  var session = getSession(req, res);
-  if(!session){
-    res.redirect('/login');
-    res.end();
-    return;
-  }
-  //console.log('PASSED LOGIN');
-
-  (function thisFunc(){
-    var thisNation = sinkerNations.shift();
-
-    if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'sinker'});
-      nation.save(function(err){
-        if(err === null) {
-          session.sinkerCount += 1;
-
-          res.render('getNation', {title: "Refounded Nation - "+nation.name, nation: nation.name, action: '/sinkers', count: session.sinkerCount, online: numSessions()});
-        }
-        else if(err.code == 11000){
-          thisFunc();
-        }
-        else {
-          res.render('getNation', {title: "Refounded Nation Error...", nation: nation.name, err: err.err, action: '/sinkers', count: session.sinkerCount, online: numSessions()});
-        }
-      });
-    }
-    else{
-      res.render('getNation',{title: "No Newly Refounded Nations", nation:'', err: 'No new nations!', action: '/sinkers', count: session.sinkerCount, online: numSessions()});
-    }
-  })();
-
-});
-
-
-app.get('/api/currentSinkerList', function(req, res){
-  res.json(sinkerNations);
-});
-
-app.get('/api/currentList', function(req, res){
-  res.json(nations);
-});
-
-app.get('/api/newNation', function(req,res){
-  var session = getSession(req, res);
-  if(!session){
-    res.redirect('/login');
-    res.end();
-    return;
-  }
-
-  (function thisFunc(){
-    var thisNation = nations.shift();
-
-    if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'feeder'});
-      nation.save(function(err){
-        if(err === null) {
-          session.feederCount += 1;
-
-          res.json({
-              nation: nation.name
-          });
-        }
-        else if(err.code == 11000){
-          thisFunc();
-        }
-        else {
-          res.json({
-            err: err
-          });
-        }
-      });
-    }
-    else{
-      res.json({
-        err: 'No New Nations'
-      });
-    }
-  })();
-
-});
-
-app.get('/api/sinkerNation', function(req,res){
-  var session = getSession(req, res);
-  if(!session){
-    res.redirect('/login');
-    res.end();
-    return;
-  }
-
-  (function thisFunc(){
-    var thisNation = sinkerNations.shift();
-
-    if(thisNation !== undefined){
-      var nation = new Nation({name: thisNation, recruiter: session['username'], recruitDate: new Date, from: 'sinker'});
-      nation.save(function(err){
-        if(err === null) {
-          session.sinkerCount += 1;
-
-          res.json({
-              nation: nation.name
-          });
-        }
-        else if(err.code == 11000){
-          thisFunc();
-        }
-        else {
-          res.json({
-            err: err
-          });
-        }
-      });
-    }
-    else{
-      res.json({
-        err: 'No New Nations'
-      });
-    }
-  })();
-
-});
-
-
-var admin = require('./controllers/admin');
-admin.Nation = Nation;
-resourceful(app, '/admin/users', admin.users);
-
-
-app.get('/admin/login', admin.login.get);
-app.post('/admin/login', admin.login.post);
-
-app.get('/admin/sessions', function(req, res){
-  res.send(sessions);
-});
-
-app.get('/admin', admin.index);
-
-app.get('/admin/nation/makeBad', admin.nations.makeBad);
-
-
-app.get('/admin/stats/numbers', function(req,res){
-  
-  var map = function(){
-    var month = (new Date(this.recruitDate).getMonth());
-
-    // get week to nearest monday
-    // http://stackoverflow.com/questions/6117814/get-week-of-year-in-javascript-like-in-php
-    var d = new Date(this.recruitDate);
-    d.setHours(0,0,0);
-    // Set to nearest Monday: current date + 1 - current day number
-    // Make Sunday's day number 7
-    d.setDate(d.getDate() + 1 - (d.getDay()||7));
-
-    if(this.from && this.from != 'badNation'){
-      emit({year: d.getFullYear(), month: d.getMonth(), date: d.getDate(), recruiter: this.recruiter}, {count: 1});
-    }
-  };
-  
-  var reduce = function(key, values){
-    var count = 0;
-    values.forEach(function(v){
-      count += v.count;
-    });
-  
-    return {count: count};
-  };
-  
-
-  // set start search date to 4 Mondays ago
-  var d1 = new Date();
-  d1.setHours(0,0,0);
-  // Set to 4 Mondays ago: current date + 1 - current day number - 7*4
-  // Make Sunday's day number 7
-  d1.setDate(d1.getDate() + 1 - (d1.getDay()||7) - 7*4);
-
-  // set end date to this weeks Monday
-  d2 = new Date();
-  d2.setHours(0,0,0);
-  d2.setDate(d2.getDate() + 1 - (d2.getDay()||7));
-
-  var query = {
-    recruitDate: {$gte: d1, $lt: d2}
-  };
-
-  Nation.collection.mapReduce(
-    map.toString(),
-    reduce.toString(),
-    {query: query , out: {inline: 1}},
-    function(err, dbres) {
-      //if(err) throw err;
-
-      //console.log(err);
-      //console.log(dbres);
-
-      res.write("Recruitment Numbers\n");
-      res.write("===================\n");
-      var list = [];
-      dbres.forEach(function(r) {
-        list.unshift({date: new Date(r._id.year, r._id.month, r._id.date), recruiter: r._id.recruiter, count: r.value.count});
-      });
-
-      var currDate = new Date(0);
-      list.forEach(function(l){
-        //console.log(l);
-        if(l.date.toString() != currDate.toString()){
-          res.write("\nWeek starting: "+ (l.date.getDate()) +'/'+ (l.date.getMonth()+1) +'/'+l.date.getFullYear()+"\n");
-          currDate = l.date;
-          //console.log(currDate, l.date);
-        }
-        res.write(""+l.recruiter);
-        res.write(' - ');
-        res.write(""+l.count);
-        res.write("\n");
-      });
-      res.end();
-    }
-  );
-});
-
-
-app.get('/admin/logs', admin.logs.index)
-app.post('/admin/logs', admin.logs.show)
-  
-
-
-
-
-
-/*****************
- * Startup Server
- * ***************/
-http.createServer(app).listen(app.get('port'), function(){
-  console.log("Express server listening on port " + app.get('port'));
-});
+/***
+ * Define Routings
+ ***/
+
+// Define sessionController routing
+var sessionController = require(__dirname+'/controllers/sessions');
+
+app.get( '/login', sessionController.new);
+app.post('/login', sessionController.create);
+app.get( '/logout', sessionController.destroy);
+
+// Load sessions and require logged in
+var middleware = [
+  sessionController.loadSessionData,
+  sessionController.requireLoggedIn
+];
+
+
+
+/***
+ * Require logged in from here
+ ***/
+
+
+// Define nationController routing
+var nationController = require(__dirname+'/controllers/nations');
+
+app.get( '/', function(req,res){res.redirect('/nations')});
+app.get( '/nations', middleware, nationController.index);
+app.get( '/nations/new', middleware,  nationController.new);
+app.post('/nations', middleware, nationController.create);
+
+
+
+/***
+ * Require Admin from here
+ ***/
+app.get( '/login/admin', middleware, sessionController.newAdmin);
+app.post('/login/admin', middleware, sessionController.createAdmin);
+
+// Require admin
+middleware.push(sessionController.requireAdmin);
+
+
+// Continue defining nationController routing
+app.get( '/nations/recruitmentNumbers', middleware, nationController.recruitmentNumbers);
+app.get( '/nations/:nation', middleware, nationController.show);
+
+
+// Define userController routing
+var userController = require(__dirname+'/controllers/users');
+
+app.get( '/users', middleware, userController.index);
+app.get( '/users/new', middleware, userController.new);
+app.post('/users', middleware, userController.create);
+app.get( '/users/:user', middleware, userController.show);
+
+
+app.listen(3000);
