@@ -4,6 +4,19 @@ var Sessions = require(__dirname+'/../models/sessions.js');
 
 Nations = new Nations('TNI');
 
+function randomString(string_length) {
+    var chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
+    string_length = string_length || 8;
+    var random_string = '';
+
+    for (var i=0; i<string_length; i++) {
+        var rnum = Math.floor(Math.random() * chars.length);
+        random_string += chars.substring(rnum,rnum+1);
+    }
+
+    return random_string;
+}
+
 var nationController = {
 
   // Show splash page
@@ -60,13 +73,13 @@ var nationController = {
         },
         function(error,result){
           // Give recruiter new nation
-          res.redirect('/nations/new');
+          res.redirect('/nations/new?'+randomString());
         }
       );
     }
     else{
       // Give recruiter a new nation
-      res.redirect('/nations/new');
+      res.redirect('/nations/new?'+randomString());
     }
   },
 
