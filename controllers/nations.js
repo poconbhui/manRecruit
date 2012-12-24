@@ -82,7 +82,7 @@ var nationController = {
 
 
   'recruitmentNumbers': function(req,res){
-    Nations.getRecruitmentNumbers('TD',function(error,collection){
+    Nations.getRecruitmentNumbers(function(error,collection){
       collection = _.sortBy(collection, function(entry){return -entry.count;});
 
       // Find last Sunday
