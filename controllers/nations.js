@@ -53,6 +53,10 @@ var nationController = {
           res.locals.recruitedCount = 0;
         }
 
+        res.set({
+          'Cache-Control': 'no-cache',
+          'Expires': 'Thu, 01 Dec 1994 16:00:00 GMT'
+        });
         res.render('nations/new.html.jade');
       }
     );
@@ -72,6 +76,9 @@ var nationController = {
           'recruiter':req.session.get('username')
         },
         function(error,result){
+          if(error){
+            console.log("Error Adding Nation: ",error,result);
+          }
           // Give recruiter new nation
           res.redirect('/nations/new?'+randomString());
         }
