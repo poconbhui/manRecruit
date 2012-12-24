@@ -1,3 +1,4 @@
+var mongodb = require('mongodb');
 var Nationstates = require(__dirname+'/../helpers/nationstates.js');
 var _            = require('underscore');
 
@@ -8,142 +9,89 @@ var _            = require('underscore');
   var recruited = [];
 
 
-// updateNations takes in a list of oldNations and badNations and a callback
-// It finds a list of new nations, prepends it to oldNations, removes
-// the nations in this new list which also appear in badNations and
-// removes the ones that aren't in the feeders.
-// It then calls a callback(nations, badNations) where nations is the new
-// list of recruitable nations, and badNations is the new list of bad nations
-function updateNations(oldNations, oldBadNations, callback){
+// Keep an array of all nations currently in the feeders
+var feederNations = [];
+// Every 30 seconds, refresh this list
+function updateFeederNations(callback){
   var NS = new Nationstates;
+  var nations = [];
 
-  var feederNations = [];
-  var newNations = [];
-
-  var parseArray = function(){
-    
-    // Add the newest nations to the front of the current working list
-    newNations = _.union(newNations, oldNations);
-    unfilteredList = newNations;
-
-    // Keep only newNations currently in the feeders
-    newNations = _.intersection(newNations, feederNations);
-
-    // Keep only newNations that aren't in the bad list
-    newNations = _.difference(newNations, oldBadNations);
-
-    // The bad nations are now any nation that have been removed in the
-    // filtering
-    oldBadNations = _.difference(unfilteredList, newNations);
-    
-    // Set nations to new filtered list
-    oldNations = newNations;
-
+  var update = _.after(NS.feeders.length,function(){
+    feederNations = nations;
 
     if(typeof callback == 'function'){
-      callback(oldNations, oldBadNations);
+      callback(feederNations);
     }
-  };
+  });
 
-  // Set parseArray to run only after all the feeders have loaded
-  // and the newNations have been loaded
-  parseArray = _.after(NS.feeders.length + 1, parseArray);
-
-  // Find all nations in all feeders
-  _.each(NS.feeders, function(feeder){
-
-    NS.api({ 'region':feeder, 'q':'nations' }, function(result){
-      if(result){
-        // add result to feeder nations
-        feederNations = feederNations.concat(result['REGION']['NATIONS'][0].split(':'));
-      }
-      else{
-        console.log("There was some error loading nations from ",feeder);
-      }
-
-      parseArray();
+  _.forEach(NS.feeders, function(feeder){
+    NS.api({'region':feeder, 'q':'nations'},function(response){
+      nations = nations.concat(response['REGION']['NATIONS'][0].split(':'));
+      update();
     });
+  });
+  
+}
+//updateFeederNations();
+//setInterval(updateFeederNations, 30*1000);
 
+
+// Keep array of all nations currently in new list
+var newNations = [];
+function updateNewNations(callback){
+  var NS = new Nationstates;
+  NS.api({'q':'newnations'},function(response){
+    newNations = response['WORLD']['NEWNATIONS'][0].split(',');
+
+    if(typeof callback == 'function'){
+      callback(newNations);
+    }
+  });
+}
+//updateNewNations();
+//setInterval(updateNewNations, 30*1000);
+
+
+function updateRecruitable(callback){
+  recruitable = _.chain(newNations)
+    .union(recruitable)
+    .intersection(feederNations)
+    .difference(unrecruitable)
+    .uniq()
+    .value();
+
+  // Only have to worry about newNations that didn't make the list
+  unrecruitable = _.chain(newNations)
+    .difference(recruitable)
+    .value();
+
+  if(typeof callback == 'function'){
+    callback(recruitable,unrecruitable);
+  }
+}
+//updateRecruitable();
+//setInterval(updateRecruitable,5*1000);
+
+function boot_nationUpdateLoop(){
+  // Initially, newNations and feederNations should be populated
+  // before recruitable lists are worked out
+  var after_initialization = _.after(2,function(){
+    // Set on intervals thereafter
+    setInterval(updateNewNations, 30*1000);
+    setInterval(updateFeederNations, 30*1000);
+    setInterval(updateRecruitable, 5*1000);
   });
 
-  // Get list of new nations
-  NS.api({'q':'newnations'}, function(result){
+  // Run initializations
+  updateNewNations(after_initialization);
+  updateFeederNations(after_initialization);
 
-    if(result){
-      newNations = result['WORLD']['NEWNATIONS'][0].split(',');
-    }
-    else{
-      console.log("There was some problem getting new nations");
-    }
-
-    parseArray();
-
-  });
-
-}; //end updateNations
-
-
-
-// Set nations to be updated regularly
-function runUpdateNationsLoop(){
-  // Make initial results bad, and update from there
-  updateNations([],[], function(newNations, newBadNations){
-    if('development' == process.env.NODE_ENV){
-      // For development, don't dump initial results
-      recruitable = _.uniq(newNations);
-      unrecruitable = newBadNations;
-    }
-    else{
-      // Production: find nations from initial results that have
-      // already been recruited and set them as unrecruitable
-      nationDB.collection('nations',function(error,nation_collection){
-        nation_collection.find({name:{$in:newNations}},{fields:{name:1}})
-          .toArray(function(error,result){
-            result = _.map(result, function(value){
-              return value.name;
-            });
-
-            recruitable   = _.chain(newNations)
-              .difference(result)
-              .uniq(recruitable)
-              .value();
-            unrecruitable = _.union(newBadNations, result);
-          });
-      });
-    }
-
-    // Run update every 30 seconds
-    setInterval(function(){
-
-      var oldNations = recruitable;
-      recruitable = [];
-
-      var oldBadNations = unrecruitable;
-      unrecruitable = [];
-
-      updateNations(
-        oldNations,
-        oldBadNations,
-        function(newNations, newBadNations){
-          recruitable = _.chain(newNations)
-            .difference(unrecruitable)
-            .uniq(recruitable)
-            .value();
-          unrecruitable = _.union(unrecruitable, newBadNations);
-        }
-      );
-
-    }, 30*1000);
-
-  });
 }
 
 
-
-// Define MongoDB Connections here
-var mongodb = require('mongodb');
-
-
+/***
+ * Define MongoDB Connections here
+ ***/
 var nationDB = null;
 var uri = process.env.MONGOLAB_URI || 'mongodb://127.0.0.1:27017/nation_db';
 
@@ -155,7 +103,27 @@ mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
 
   nationDB = db;
 
-  runUpdateNationsLoop();
+  // Initial run should find nations in newNations list that are
+  // already recruited
+  updateNewNations(function(newNations){
+    nationDB.collection('nations',function(error,nation_collection){
+      nation_collection.find({'name':{$in:newNations}})
+        .toArray(function(error,results){
+          if(error){
+            console.log('There was an error loading initial nations: ',error);
+            return;
+          }
+
+          unrecruitable = _.map(results, function(result){
+            return result.name;
+          });
+
+
+          // Now boot updaters
+          boot_nationUpdateLoop();
+        });
+    });
+  });
 });
 
 
@@ -177,7 +145,8 @@ var Nations = function(region_in){
 
   // Pop first nation off list
   this.popFirstRecruitable = function(){
-    return recruitable.shift();
+    var nation = recruitable.shift();
+    return nation;
   };
 
   // Set recruitable list from input array

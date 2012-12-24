@@ -36,7 +36,7 @@ var nationController = {
 
     // Not the best option, but this should hopefully help
     // with the double nation problem
-    Nations.addUnrecruitable(req.body.nation);
+    Nations.addUnrecruitable(res.locals.offeredNation);
 
     Nations.getRecruitmentNumbers(
       req.session.get('username'),
