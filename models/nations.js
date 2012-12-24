@@ -79,7 +79,7 @@ function boot_nationUpdateLoop(){
     // Set on intervals thereafter
     setInterval(updateNewNations, 30*1000);
     setInterval(updateFeederNations, 30*1000);
-    setInterval(updateRecruitable, 5*1000);
+    setInterval(updateRecruitable, 15*1000);
   });
 
   // Run initializations
