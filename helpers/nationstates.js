@@ -135,8 +135,10 @@ var nationstates = function(options){
       host: 'www.nationstates.net',
       port: '80',
       path: '/cgi-bin/api.cgi?' + request,
-      'user-agent': self.userAgent
+      headers:{'User-Agent': self.userAgent}
     };
+
+    //console.log('OPTIONS', http_options);
 
     // Run the query
     xmlGet(http_options, function(res) {
