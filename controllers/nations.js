@@ -83,7 +83,20 @@ var nationController = {
 
   'recruitmentNumbers': function(req,res){
     Nations.getRecruitmentNumbers(function(error,collection){
-      collection = _.sortBy(collection, function(entry){return -entry.count;});
+      collection = _.chain(collection)
+        .filter(function(entry){
+          return entry.count.prev > 0;
+        })
+        .map(function(entry){
+          return {
+            'recruiter': entry.recruiter,
+            'count':     entry.count.prev
+          };
+        })
+        .sortBy(function(entry){
+          return -entry.count;
+        })
+        .value();
 
       // Find last Sunday
       var today = new Date;
@@ -94,7 +107,10 @@ var nationController = {
       );
       prevDate.setUTCDate(prevDate.getUTCDate() - prevDate.getUTCDay());
 
-      res.json({'date':prevDate, 'numbers':collection});
+      res.locals.totalsDate = prevDate;
+      res.locals.recruitmentNumbers = collection;
+
+      res.render('nations/recruitmentNumbers.html.jade');
     });
   }
 

@@ -1,0 +1,8 @@
+doctype 5
+html
+  body
+  div Totals for #{totalsDate.toDateString()}
+  div
+    ul
+      for data in recruitmentNumbers
+        li #{data.recruiter} - #{data.count}
