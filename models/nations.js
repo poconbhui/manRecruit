@@ -19,6 +19,8 @@ function updateFeederNations(callback){
   var update = _.after(NS.feeders.length,function(){
     feederNations = nations;
 
+    console.log('feederNations Length: '+feederNations.length);
+
     if(typeof callback == 'function'){
       callback(feederNations);
     }
@@ -43,6 +45,8 @@ function updateNewNations(callback){
   NS.api({'q':'newnations'},function(response){
     newNations = response['WORLD']['NEWNATIONS'][0].split(',');
 
+    console.log('newNations Length:    '+newNations.length);
+
     if(typeof callback == 'function'){
       callback(newNations);
     }
@@ -65,6 +69,9 @@ function updateRecruitable(callback){
     .difference(recruitable)
     .value();
 
+  console.log('Recruitable Length:   '+recruitable.length);
+  console.log('Unrecruitable Length: '+unrecruitable.length);
+
   if(typeof callback == 'function'){
     callback(recruitable,unrecruitable);
   }
@@ -73,19 +80,12 @@ function updateRecruitable(callback){
 //setInterval(updateRecruitable,5*1000);
 
 function boot_nationUpdateLoop(){
-  // Initially, newNations and feederNations should be populated
-  // before recruitable lists are worked out
   var after_initialization = _.after(2,function(){
     // Set on intervals thereafter
     setInterval(updateNewNations, 30*1000);
     setInterval(updateFeederNations, 30*1000);
     setInterval(updateRecruitable, 15*1000);
   });
-
-  // Run initializations
-  updateNewNations(after_initialization);
-  updateFeederNations(after_initialization);
-
 }
 
 
@@ -96,6 +96,7 @@ var nationDB = null;
 var uri = process.env.MONGOLAB_URI || 'mongodb://127.0.0.1:27017/nation_db';
 
 mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
+
   if(error){
     console.log('ERROR CONNECTING TO MONGODB: ',error);
     return;
@@ -103,28 +104,52 @@ mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
 
   nationDB = db;
 
-  // Initial run should find nations in newNations list that are
-  // already recruited
+  // Initialization:
+  //  Find newNations.
+  //  Generate unrecruitable list from nations in newNations that have
+  //    already been recruited.
+  //  Find feederNations
+  //  Generate recruitable list given newNations, feederNations
+  //    and unrecruitable list
+
+  // Get newNations
   updateNewNations(function(newNations){
+
+    // find newNations already in database
     nationDB.collection('nations',function(error,nation_collection){
-      nation_collection.find({'name':{$in:newNations}})
+      nation_collection
+        .find({'name':{$in:newNations}})
         .toArray(function(error,results){
+
           if(error){
             console.log('There was an error loading initial nations: ',error);
             return;
           }
 
+          // Generate unrecruitable list from database results
           unrecruitable = _.map(results, function(result){
             return result.name;
           });
+          
 
+          // Find feederNations
+          updateFeederNations(function(){
 
-          // Now boot updaters
-          boot_nationUpdateLoop();
-        });
-    });
-  });
-});
+            // NOW generate recruitable list
+            updateRecruitable(function(){
+
+              // Boot update loops now that everything is done
+              boot_nationUpdateLoop();
+
+            });
+
+          });
+
+        }); //toArray
+    }); //nationDB.collection
+  }); //updateNewNations
+
+}); // mongodb.MongoClient.connect
 
 
 

@@ -40,17 +40,20 @@ var xmlGet = function(options, callback) {
         })
         .on('error', function(e){
           console.log('problem with request: ');
-          console.log(e);
+          console.log(e.code);
           callback(false);
         });
     });
 
     req.on('error', function(error){
-      console.log(error);
 
-      if(error.code == 'ECONNRESET'){
-        // Just retry the request
-        runRequest();
+      switch(error.code){
+        case 'ECONNRESET': 
+        case 'ETIMEDOUT' : 
+          runRequest();
+          break;
+        default:
+          console.log('NSAPI Request error: ',error.code);
       }
 
     });
