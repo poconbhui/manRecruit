@@ -17,17 +17,30 @@ app.locals._ = _;
 var port = process.env.PORT || 3000;
 
 
-if('development' == app.get('env')){
-  app.use(function(req,res,next){
-    res.locals.environment = 'development';
-    next();
-  });
-}
-else if('production' == app.get('env')){
-  app.use(function(req,res,next){
-    res.locals.environment = 'production';
-    next();
-  });
+switch(app.get('env')){
+  case 'development':
+    app.use(function(req,res,next){
+      res.locals.environment = 'development';
+      next();
+    });
+
+    break;
+
+  case 'staging':
+    app.use(function(req,res,next){
+      res.locals.environment = 'staging';
+      next();
+    });
+
+    break;
+
+  case 'production':
+    app.use(function(req,res,next){
+      res.locals.environment = 'production';
+      next();
+    });
+
+    break;
 }
 
 

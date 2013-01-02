@@ -4,9 +4,11 @@ var crypto = require('crypto');
 
 var sessionController = {
   'new': function(req,res){
-    if('development' == res.locals.environment){
-      res.locals.username = 'TD';
-      res.locals.password = Users.generatePassword('TD');
+    switch(res.locals.environment){
+      case 'development':
+      case 'staging':
+        res.locals.username = 'TD';
+        res.locals.password = Users.generatePassword('TD');
     }
 
     res.locals.message = 'User Login';
@@ -16,9 +18,11 @@ var sessionController = {
   },
 
   'newAdmin': function(req,res){
-    if('development' == res.locals.environment){
-      res.locals.username = 'admin';
-      res.locals.password = 'I_HEART_TD';
+    switch(res.locals.environment){
+      case 'development':
+      case 'staging':
+        res.locals.username = 'admin';
+        res.locals.password = 'I_HEART_TD';
     }
 
     res.locals.message = 'Admin Login';
