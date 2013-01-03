@@ -20,7 +20,7 @@ function updateFeederNations(callback){
     feederNations.length = 0;
     feederNations.push.apply(feederNations,nations);
 
-    console.log('feederNations Length:   '+feederNations.length);
+    //console.log('feederNations Length:   '+feederNations.length);
 
     if(typeof callback == 'function'){
       callback(feederNations);
@@ -52,7 +52,7 @@ function updateNewNations(callback){
       response['WORLD']['NEWNATIONS'][0].split(',')
     );
 
-    console.log('newNations Length:      '+newNations.length);
+    //console.log('newNations Length:      '+newNations.length);
 
     if(typeof callback == 'function'){
       callback(newNations);
@@ -74,8 +74,8 @@ function updateRecruitable(callback){
     .difference(recruitable)
     .value();
 
-  console.log('- Recruitable Length:   '+recruitable.length);
-  console.log('- Unrecruitable Length: '+unrecruitable.length);
+  //console.log('- Recruitable Length:   '+recruitable.length);
+  //console.log('- Unrecruitable Length: '+unrecruitable.length);
 
   if(typeof callback == 'function'){
     callback(recruitable,unrecruitable);
