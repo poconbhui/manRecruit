@@ -33,8 +33,8 @@ var xmlGet = function(options, callback) {
 
           // We've got some data! Parse and return
           var parser = new xml2js.Parser();
-          //console.log(xmlReturned);
           parser.parseString(xmlReturned, function(err, result) {
+            xmlReturned = null; // unset xmlReturned
             callback(result);
           });
         })

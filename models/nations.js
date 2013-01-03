@@ -17,13 +17,17 @@ function updateFeederNations(callback){
   var nations = [];
 
   var update = _.after(NS.feeders.length,function(){
-    feederNations = nations;
+    feederNations.length = 0;
+    feederNations.push.apply(feederNations,nations);
 
-    console.log('feederNations Length: '+feederNations.length);
+    console.log('feederNations Length:   '+feederNations.length);
 
     if(typeof callback == 'function'){
       callback(feederNations);
     }
+
+    nations.length = 0;
+
   });
 
   _.forEach(NS.feeders, function(feeder){
@@ -34,8 +38,6 @@ function updateFeederNations(callback){
   });
   
 }
-//updateFeederNations();
-//setInterval(updateFeederNations, 30*1000);
 
 
 // Keep array of all nations currently in new list
@@ -43,17 +45,20 @@ var newNations = [];
 function updateNewNations(callback){
   var NS = new Nationstates;
   NS.api({'q':'newnations'},function(response){
-    newNations = response['WORLD']['NEWNATIONS'][0].split(',');
 
-    console.log('newNations Length:    '+newNations.length);
+    newNations.length = 0;
+    newNations.push.apply(
+      newNations,
+      response['WORLD']['NEWNATIONS'][0].split(',')
+    );
+
+    console.log('newNations Length:      '+newNations.length);
 
     if(typeof callback == 'function'){
       callback(newNations);
     }
   });
 }
-//updateNewNations();
-//setInterval(updateNewNations, 30*1000);
 
 
 function updateRecruitable(callback){
@@ -69,8 +74,8 @@ function updateRecruitable(callback){
     .difference(recruitable)
     .value();
 
-  console.log('Recruitable Length:   '+recruitable.length);
-  console.log('Unrecruitable Length: '+unrecruitable.length);
+  console.log('- Recruitable Length:   '+recruitable.length);
+  console.log('- Unrecruitable Length: '+unrecruitable.length);
 
   if(typeof callback == 'function'){
     callback(recruitable,unrecruitable);
@@ -80,12 +85,10 @@ function updateRecruitable(callback){
 //setInterval(updateRecruitable,5*1000);
 
 function boot_nationUpdateLoop(){
-  var after_initialization = _.after(2,function(){
-    // Set on intervals thereafter
-    setInterval(updateNewNations, 30*1000);
-    setInterval(updateFeederNations, 30*1000);
-    setInterval(updateRecruitable, 15*1000);
-  });
+  // Set on intervals thereafter
+  setInterval(updateNewNations, 30*1000);
+  setInterval(updateFeederNations, 30*1000);
+  setInterval(updateRecruitable, 15*1000);
 }
 
 

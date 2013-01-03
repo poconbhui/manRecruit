@@ -1,3 +1,10 @@
+switch(process.env.NODE_ENV){
+  case 'development':
+  case 'staging':
+    require('nodetime').profile();
+    break;
+}
+
 var express      = require('express');
 var app          = express();
 var _            = require('underscore');
@@ -17,31 +24,28 @@ app.locals._ = _;
 var port = process.env.PORT || 3000;
 
 
-switch(app.get('env')){
-  case 'development':
-    app.use(function(req,res,next){
-      res.locals.environment = 'development';
-      next();
-    });
+app.configure('development',function(){
+  console.log('DEVELOPMENT');
+  app.use(function(req,res,next){
+    res.locals.environment = 'development';
+    next();
+  });
+});
 
-    break;
+app.configure('staging', function(){
+  console.log('STAGING');
+  app.use(function(req,res,next){
+    res.locals.environment = 'staging';
+    next();
+  });
+});
 
-  case 'staging':
-    app.use(function(req,res,next){
-      res.locals.environment = 'staging';
-      next();
-    });
-
-    break;
-
-  case 'production':
-    app.use(function(req,res,next){
-      res.locals.environment = 'production';
-      next();
-    });
-
-    break;
-}
+app.configure('production',function(){
+  app.use(function(req,res,next){
+    res.locals.environment = 'production';
+    next();
+  });
+});
 
 
 

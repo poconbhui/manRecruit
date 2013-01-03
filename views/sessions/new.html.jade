@@ -9,10 +9,7 @@ html
         input(type='text', name='user[password]')
       input(type='submit', value='Login')
 
-    - switch(environment){
-      - case 'development':
-      - case 'staging':
-          pre
-            | USERNAME: #{username}
-            | PASSWORD: #{password}
-    - }
+    if 'development' == environment || 'staging' == environment
+      pre
+        | USERNAME: #{username}
+        | PASSWORD: #{password}
