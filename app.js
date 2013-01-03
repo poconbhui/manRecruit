@@ -1,13 +1,32 @@
+var _            = require('underscore');
+
 switch(process.env.NODE_ENV){
   case 'development':
   case 'staging':
-    require('nodetime').profile();
+    var memwatch = require('memwatch');
+    var hd = new memwatch.HeapDiff();
+    memwatch.on('stats',function(stats){
+      console.log('STATS: ',stats);
+      console.log(
+        'HEAP: ',
+        _.chain(hd.end().change.details)
+          .sortBy(function(entry){
+            return -entry.size_bytes;
+          })
+          .map(function(entry){
+            return {'what':entry.what, 'size':entry.size};
+          })
+          .first(5)
+          .value()
+      );
+
+      hd = new memwatch.HeapDiff();
+    });
     break;
 }
 
 var express      = require('express');
 var app          = express();
-var _            = require('underscore');
 
 require('longjohn');
 
