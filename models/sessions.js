@@ -1,17 +1,20 @@
 var _ = require('underscore');
 
 var sessions = {};
+var cleanupInterval = 30*60*1000;
 
 
 // Periodically check sessions and delete any where the last access
 // is longer than 30 mins
 setInterval(function(){
+  console.log('Running Session Cleanup');
   _.each(sessions, function(value,key){
-    if(value.lastAccess < new Date - 30*60*1000){
+    if(value.lastAccess < (new Date - cleanupInterval)){
+      console.log('Removing Session: '+key);
       delete sessions[key];
     }
   });
-}, 30*60*1000);
+}, cleanupInterval);
 
 
 var Session = function(key){
@@ -28,8 +31,7 @@ var Session = function(key){
 
 
   this.set = function(key, value){
-    session[key] = value;
-    return true;
+    return session[key] = value;
   }
 
   this.get = function(key){

@@ -1,32 +1,24 @@
-var _            = require('underscore');
-
+// Heap usage output
 switch(process.env.NODE_ENV){
   case 'development':
   case 'staging':
-    var memwatch = require('memwatch');
-    var hd = new memwatch.HeapDiff();
-    memwatch.on('stats',function(stats){
-      console.log('STATS: ',stats);
-      console.log(
-        'HEAP: ',
-        _.chain(hd.end().change.details)
-          .sortBy(function(entry){
-            return -entry.size_bytes;
-          })
-          .map(function(entry){
-            return {'what':entry.what, 'size':entry.size};
-          })
-          .first(5)
-          .value()
-      );
 
-      hd = new memwatch.HeapDiff();
-    });
+    setInterval(function(){
+      var obj = process.memoryUsage();
+
+      var string = 'PROF: '
+        + Math.round(process.uptime()) + ' '
+        + obj.heapTotal + ' '
+        + obj.heapUsed;
+
+      console.log(string);
+    },30*1000);
     break;
 }
 
 var express      = require('express');
 var app          = express();
+var _            = require('underscore');
 
 require('longjohn');
 

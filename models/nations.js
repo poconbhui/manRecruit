@@ -95,18 +95,22 @@ function boot_nationUpdateLoop(){
 /***
  * Define MongoDB Connections here
  ***/
-var nationDB = null;
+//var nationDB = null;
 var uri = process.env.MONGOLAB_URI || 'mongodb://127.0.0.1:27017/nation_db';
 
-mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
+function nationDB(callback){
+  mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
 
-  if(error){
-    console.log('ERROR CONNECTING TO MONGODB: ',error);
-    return;
-  }
+    if(error){
+      console.log('ERROR CONNECTING TO MONGODB: ',error);
+      return;
+    }
 
-  nationDB = db;
+    callback(error,db);
+  });
+}
 
+nationDB(function(error, db){
   // Initialization:
   //  Find newNations.
   //  Generate unrecruitable list from nations in newNations that have
@@ -119,10 +123,12 @@ mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
   updateNewNations(function(newNations){
 
     // find newNations already in database
-    nationDB.collection('nations',function(error,nation_collection){
+    db.collection('nations',function(error,nation_collection){
       nation_collection
         .find({'name':{$in:newNations}})
         .toArray(function(error,results){
+          
+          db.close();
 
           if(error){
             console.log('There was an error loading initial nations: ',error);
@@ -152,7 +158,7 @@ mongodb.MongoClient.connect(uri, {'safe': true}, function(error, db){
     }); //nationDB.collection
   }); //updateNewNations
 
-}); // mongodb.MongoClient.connect
+}); // nationDB
 
 
 
@@ -198,9 +204,11 @@ var Nations = function(region_in){
 
 
   var getNationCollection = function(callback){
-    nationDB.collection('nations',function(error,nation_collection){
-      if(error) callback(error);
-      else      callback(null, nation_collection);
+    nationDB(function(error, db){
+      db.collection('nations',function(error,nation_collection){
+        if(error) callback(error,null, db);
+        else      callback(null, nation_collection, db);
+      });
     });
   };
 
@@ -208,16 +216,18 @@ var Nations = function(region_in){
   this.addRecruited = function(data, callback){
     data.date = new Date;
 
-    getNationCollection(function(error, nation_collection){
+    getNationCollection(function(error, nation_collection, db){
       //recruited.push(data);
       // If error, return error and die
       if(error){
+        db.close();
         callback(error);
         return false;
       }
 
       //data._id = data.name;
       nation_collection.insert(data, {w:1}, function(error,result){
+        db.close();
         if(typeof callback == 'function'){
           callback(error,result);
         }
@@ -293,19 +303,22 @@ var Nations = function(region_in){
       return totals;
     };
 
-    getNationCollection(function(error, nation_collection){
+    getNationCollection(function(error, nation_collection, db){
       nation_collection.mapReduce(map, reduce,
         {
           'query':query,
           'out':{inline:1}
         },
-        function(error,collection){
+        function(error,result){
+
+          db.close();
+
           if(error) callback(error);
           else{
-            collection = _.map(collection, function(entry){
+            result = _.map(result, function(entry){
               return {'recruiter': entry._id, 'count': entry.value};
             });
-            callback(null, collection);
+            callback(null, result);
           }
         }
       );
@@ -322,10 +335,13 @@ var Nations = function(region_in){
       return true;
     }
     else{
-      getNationCollection(function(error, nation_collection){
+      getNationCollection(function(error, nation_collection, db){
         nation_collection.findOne(
           {'name':nationName},
           function(error, nation){
+
+            db.close();
+
             if(error){
               callback(null, {'name':nationName, 'status': 'not found'});
             }
