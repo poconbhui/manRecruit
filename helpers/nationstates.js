@@ -1,13 +1,16 @@
-var userAgent = "Node.js NSAPI by Poopcannon. poopcannon@gmail.com"
+/*jslint node: true */
+'use strict';
 
-var xml2js = require( 'xml2js' )
-  , http   = require( 'http'   );
+var userAgent = "Node.js NSAPI by Poopcannon. poopcannon@gmail.com";
+
+var xml2js = require( 'xml2js' ),
+    http   = require( 'http'   );
 
 
 // Get xml data via http.get method and return it as a parsed object
 var xmlGet = function(options, callback) {
 
-  (function runRequest(){
+  (function runRequest() {
     var req = http.request(options, function(res) {
       var xmlReturned = "";
 
@@ -17,15 +20,15 @@ var xmlGet = function(options, callback) {
         .on('data', function(chunk) {
           xmlReturned = xmlReturned + chunk;
         })
-        .on('end', function(){
+        .on('end', function() {
           // add some error checking
 
           // check if we've been locked out of the API
           if(
             xmlReturned.match(
               "<h1>Too Many Requests From Your IP Address</h1>"
-            ) != null
-          ){
+            ) !== null
+          ) {
             // We've been locked out! Return false and exit
             callback(false);
             return false;
@@ -38,16 +41,16 @@ var xmlGet = function(options, callback) {
             callback(result);
           });
         })
-        .on('error', function(e){
+        .on('error', function(e) {
           console.log('problem with request: ');
           console.log(e.code);
           callback(false);
         });
     });
 
-    req.on('error', function(error){
+    req.on('error', function(error) {
 
-      switch(error.code){
+      switch(error.code) {
         case 'ECONNRESET': 
         case 'ETIMEDOUT' : 
           runRequest();
@@ -64,13 +67,13 @@ var xmlGet = function(options, callback) {
 
 
 // The main Nationstates object output by this module
-var nationstates = function(options){
-  var self = this;
+var Nationstates = function(options) {
+  var _this = this;
 
   options = options || {};
 
   // Define default values for feeders
-  self.feeders = options.feeders || [
+  _this.feeders = options.feeders || [
     "the_pacific",
     "the_north_pacific",
     "the_south_pacific",
@@ -79,16 +82,16 @@ var nationstates = function(options){
   ];
 
   // Define default values for sinkers
-  self.sinkers = options.sinkers || [
+  _this.sinkers = options.sinkers || [
     "lazarus",
     "osiris",
     "balder"
   ];
 
-  self.userAgent = options.userAgent || userAgent;
+  _this.userAgent = options.userAgent || userAgent;
 
   // The actual API used for interacting with Nationstates
-  self.api = function(options, callback) {
+  _this.api = function(options, callback) {
     
     var request = "";
 
@@ -131,14 +134,14 @@ var nationstates = function(options){
         request = options;
         break;
 
-    };
+    }
 
     // Http options, specifying how to connect to the NSAPI
     var http_options = {
       host: 'www.nationstates.net',
       port: '80',
       path: '/cgi-bin/api.cgi?' + request,
-      headers:{'User-Agent': self.userAgent}
+      headers: {'User-Agent': _this.userAgent}
     };
 
     //console.log('OPTIONS', http_options);
@@ -150,6 +153,6 @@ var nationstates = function(options){
 
   }; //end api
 
-}; //end nationstates
+}; //end Nationstates
 
-module.exports = nationstates;
+module.exports = Nationstates;

@@ -1,23 +1,37 @@
+/*jslint node: true */
+'use strict';
+
 var crypto = require('crypto');
 var secret = 'pw';
 
-var Users = function(username){
+var User = function(username) {
   this.username = username;
-
-  this.verify = Users.verify(this.username, password);
 };
 
-Users.generatePassword = function(username){
-  return crypto.createHash('md5').update(username+secret).digest('hex');
-}
+User.prototype.generatePassword = function(callback) {
+  callback(
+    null,
+    crypto.createHash('md5').update(this.username+secret).digest('hex')
+  );
 
-Users.verify = function(username, password){
-  if(password == Users.generatePassword(username)){
-    return true;
-  }
-  else{
-    return false;
-  }
+  return this;
 };
 
-module.exports = Users;
+User.prototype.verify = function(password_in, callback) {
+  var _this = this;
+  this.generatePassword(function(error, password) {
+    console.log('USER: '+_this.username);
+    console.log('FOUND: '+password);
+    console.log('GIVEN: '+password_in);
+    if(password === password_in) {
+      callback(null, true);
+    }
+    else {
+      callback(null, false);
+    }
+  });
+
+  return this;
+};
+
+module.exports = User;

@@ -1,3 +1,6 @@
+/*jslint node: true */
+'use strict';
+
 var _ = require('underscore');
 
 var sessions = {};
@@ -9,7 +12,7 @@ var cleanupInterval = 30*60*1000;
 setInterval(function(){
   console.log('Running Session Cleanup');
   _.each(sessions, function(value,key){
-    if(value.lastAccess < (new Date - cleanupInterval)){
+    if(value.lastAccess < (new Date() - cleanupInterval)){
       console.log('Removing Session: '+key);
       delete sessions[key];
     }
@@ -23,25 +26,40 @@ var Session = function(key){
     sessions[key] = {};
   }
 
-  var session = sessions[key];
+  this._session = sessions[key];
+  this._key = key;
 
 
   // Update last access time
-  session.lastAccess = new Date;
+  this._session.lastAccess = new Date();
+
+};
 
 
-  this.set = function(key, value){
-    return session[key] = value;
+Session.prototype.set = function(key, value, callback){
+  var setReturn = this._session[key] = value;
+
+  if(typeof callback == 'function'){
+    callback(null, setReturn);
   }
 
-  this.get = function(key){
-    return session[key];
+  return this;
+};
+
+Session.prototype.get = function(key, callback){
+  callback(null, this._session[key]);
+
+  return this;
+};
+
+Session.prototype.destroy = function(callback){
+  var delVal = delete this._sessions[this._key];
+
+  if(typeof callback == 'function') {
+    callback(null, delVal);
   }
 
-  this.destroy = function(){
-    delete sessions[key];
-  }
-
+  return this;
 };
 
 module.exports = Session;

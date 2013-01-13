@@ -1,20 +1,39 @@
-var Users = require(__dirname+'/../models/users.js');
+/*jslint node: true */
+'use strict';
+
+var User = require(__dirname+'/../models/users.js');
 var Sessions = require(__dirname+'/../models/sessions.js');
 var crypto = require('crypto');
 
 var sessionController = {
   'new': function(req,res){
+
+    var common = function commonNew(){
+      res.locals.message = 'User Login';
+      res.locals.action  = '/login';
+
+      res.render('sessions/new.html.jade');
+    };
+
     switch(res.locals.environment){
       case 'development':
       case 'staging':
-        res.locals.username = 'TD';
-        res.locals.password = Users.generatePassword('TD');
+        var user = new User('TD');
+
+        user.generatePassword(function(error, password){
+          res.locals.username = user.username;
+          res.locals.password = password;
+
+          common();
+        });
+
+        break;
+
+      case 'production':
+        common();
+        break;
     }
 
-    res.locals.message = 'User Login';
-    res.locals.action  = '/login';
-
-    res.render('sessions/new.html.jade');
   },
 
   'newAdmin': function(req,res){
@@ -33,23 +52,27 @@ var sessionController = {
 
 
   'create': function(req,res){
-    var user = req.body.user;
+    var user_in = req.body.user;
+    var user = new User(user_in.name);
 
-    if(Users.verify(user.name, user.password)){
-      crypto.randomBytes(24, function(ex,buf){
-        var token = buf.toString('hex');
-        var session = new Sessions(token);
-        session.set('username', user.name);
-        session.set('admin',false);
+    user.verify(user_in.password, function(error, result){
+      if(result){
+        crypto.randomBytes(24, function(ex,buf){
+          var token = buf.toString('hex');
+          var session = new Sessions(token);
 
-        res.cookie('session',token,{signed:true});
+          session.set('username', user.username);
+          session.set('admin', false);
 
+          res.cookie('session',token,{signed:true});
+
+          res.redirect('/nations');
+        });
+      }
+      else{
         res.redirect('/nations');
-      });
-    }
-    else{
-      res.redirect('/nations');
-    }
+      }
+    });
   },
 
 
@@ -57,6 +80,7 @@ var sessionController = {
     var user = req.body.user || {};
 
     if(user.name == 'admin' && user.password == 'I_HEART_TD'){
+      console.log('SETTING ADMIN TRUE');
       req.session.set('admin', true);
     }
 
@@ -82,26 +106,36 @@ var sessionController = {
 
 
   'requireLoggedIn': function(req,res,next){
-    if(req.session && req.session.get('username')){
-      // If username is set, user is logged in. Continue
-      next();
-    }
-    else{
-      // No username found. Require login!
+    if(!req.session){
       res.redirect('/login');
+      return;
     }
+
+    req.session.get('username', function(error, username){
+      if(username){
+        // If username is set, user is logged in. Continue
+        next();
+      }
+      else{
+        // No username found. Require login!
+        res.redirect('/login');
+      }
+    });
   },
 
 
   'requireAdmin': function(req,res,next){
-    if(req.session.get('admin') == true){
-      // User has admin status. Continue
-      next();
-    }
-    else{
-      // User has no admin statue. Require admin login
-      res.redirect('/login/admin');
-    }
+    req.session.get('admin', function(error, result) {
+      console.log('ADMIN VALUE: ', result);
+      if(result){
+        // User has admin status. Continue
+        next();
+      }
+      else{
+        // User has no admin statue. Require admin login
+        res.redirect('/login/admin');
+      }
+    });
   }
 
 };

@@ -1,4 +1,7 @@
-var Users = require(__dirname+'/../models/users');
+/*jslint node: true */
+'use strict';
+
+var User = require(__dirname+'/../models/users');
 
 var userController = {
 
@@ -17,7 +20,14 @@ var userController = {
     
   'show': function(req,res){
     var username = req.params.user;
-    res.send({'username':username,'password':Users.generatePassword(username)});
+    var user = new User(username);
+
+    user.generatePassword(function(error, password) {
+      res.send( {
+        'username': username,
+        'password': password
+      });
+    });
   }
 
 };

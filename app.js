@@ -1,15 +1,18 @@
+/*jslint node: true */
+'use strict';
+
 // Heap usage output
 switch(process.env.NODE_ENV){
   case 'development':
   case 'staging':
 
-    setInterval(function(){
+    setInterval(function outputMemoryUsage(){
       var obj = process.memoryUsage();
 
-      var string = 'PROF: '
-        + Math.round(process.uptime()) + ' '
-        + obj.heapTotal + ' '
-        + obj.heapUsed;
+      var string = 'PROF: ' +
+        Math.round(process.uptime()) + ' ' +
+        obj.heapTotal + ' ' +
+        obj.heapUsed;
 
       console.log(string);
     },30*1000);
@@ -87,7 +90,9 @@ var middleware = [
 // Define nationController routing
 var nationController = require(__dirname+'/controllers/nations');
 
-app.get( '/', function(req,res){res.redirect('/nations')});
+app.get( '/', function(req,res) {
+  res.redirect('/nations');
+});
 app.get( '/nations', middleware, nationController.index);
 app.get( '/nations/new', middleware,  nationController.new);
 app.post('/nations', middleware, nationController.create);
