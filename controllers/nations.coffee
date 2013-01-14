@@ -139,4 +139,26 @@ nationController =
 
       res.render 'nations/recruitmentNumbers.html.jade'
 
+  loadNumbers: (req, res, next) ->
+    req.session.get 'username', (error, username) ->
+      if error
+        console.log 'Error getting username in NationController.loadNumbers'
+        res.redirect '/nations'
+        return
+
+      Nation.countRecruitable (error, recruitableCount) ->
+        if error
+          console.log 'ERROR: ', error
+          recruitableCount = 0
+
+        Nation.getRecruitmentNumbers username, (error, collection) ->
+          if error
+            console.log 'ERROR: ', error
+            collection = []
+
+          res.locals.recruitableCount = recruitableCount
+          res.locals.recruitedCount = collection[0]?.count.current || 0
+
+          next()
+
 module.exports = nationController

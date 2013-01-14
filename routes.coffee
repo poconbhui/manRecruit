@@ -26,6 +26,8 @@ routing = (app) ->
   # Define nationController routing
   nationController = require "#{__dirname}/controllers/nations"
 
+  middleware.push nationController.loadNumbers
+
   app.get '/', (req,res) ->
     res.redirect '/nations'
   app.get  '/nations', middleware, nationController.index

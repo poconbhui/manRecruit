@@ -1,7 +1,8 @@
-doctype 5
-html
-  body
+extends ../application.html
+
+block content
   form(action='/users', method='post')
     div
       | Username: 
       input(type='text', name='username')
+    button.btn(type="Submit") Submit

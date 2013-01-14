@@ -10,6 +10,7 @@ config = (app) ->
 
   app.set 'views', "#{__dirname}/views"
   app.engine 'jade', require('jade').__express
+  app.use '/static', express.static "#{__dirname}/views/assets"
 
   app.locals._ = require 'underscore'
 

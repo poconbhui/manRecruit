@@ -1,11 +1,11 @@
-doctype 5
-html(lang="en")
-  body
-    a(href='/nations/new') Start Recruiting!
+extends ../application.html
 
-    // Recruitable Nations
-    h2 Recruitable Nations: #{recruitableCount}
-    ul
-      - _.forEach(recruitableList, function(nation){
-          li= nation
-      - });
+block content
+  a.btn(href='/nations/new') Recruit From Feeders!
+
+  //- Recruitable Nations
+  h2 Recruitable Nations: #{recruitableCount}
+  ul
+    - _.forEach(recruitableList, function(nation){
+        li= nation
+    - });

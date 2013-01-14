@@ -5,14 +5,25 @@ if process.env.NODE_ENV is 'development' or 'staging'
 
     string = "PROF: 
       #{Math.round process.uptime()} 
-      #{obj.heapTotal} 
-      #{obj.heapUsed}"
+      #{Math.round(obj.heapTotal/1024/1024)}MB
+      #{Math.round(obj.heapUsed/1024/1024)}MB"
 
     console.log string
   , 30*1000
 
-express = require('express');
-app     = express();
+###
+#Check memory usage periodically, if over limit, restart system
+###
+setInterval ->
+  obj = process.memoryUsage()
+  heapTotal = obj.heapTotal/1024/1024
+  if heapTotal > 15
+    console.log "Measured Heap Total of #{heapTotal}. Exiting."
+    process.exit()
+, 10*1000
+
+express = require('express')
+app     = express()
 
 require 'longjohn'
 
