@@ -1,7 +1,15 @@
 _ = require('underscore')
 
+# Set up connection to Redis database
+if process.env.REDISTOGO_URL
+  rtg_url = require('url').parse(process.env.REDISTOGO_URL)
+  redis = require('redis').createClient rtg_url.port, rtg_url.hostname
+  redis.auth rtg.auth.split(':')[1]
+else
+  redis = require('redis').createClient()
+
 sessions = {}
-cleanupInterval = 30*60*1000
+cleanupInterval = 30*60
 
 
 ###
@@ -9,6 +17,7 @@ cleanupInterval = 30*60*1000
 # is longer than 30 mins
 ###
 
+###
 setInterval ->
   console.log 'Running Session Cleanup'
   _.each sessions, (value,key) ->
@@ -16,28 +25,39 @@ setInterval ->
       console.log "Removing Session: #{key}"
       delete sessions[key]
 , cleanupInterval
+###
 
 
 class Session
 
   constructor: (@_key) ->
-    sessions[@_key] = {} unless sessions[@_key]
-    @_session = sessions[@_key]
+    #sessions[@_key] = {} unless sessions[@_key]
+    #@_session = sessions[@_key]
 
     # Update last access time
-    @_session.lastAccess = new Date()
+    # @_session.lastAccess = new Date()
+
+
+  rKey: (key) ->
+    "#{@_key}:#{key}"
 
 
   set: (key, value, callback) ->
-    setReturn = @_session[key] = value
-    callback? null, setReturn
+    r_key = @rKey key
+    redis.set r_key, value, (error, reply) ->
+      redis.expire r_key, cleanupInterval
+      callback? null, reply?.toString()
 
 
   get: (key, callback) ->
-    callback null, @_session[key]
+    r_key = @rKey key
+    redis.get r_key, (error, reply) ->
+      redis.expire r_key, cleanupInterval
+      callback? null, reply?.toString()
 
   destroy: (callback) ->
-    delVal = delete sessions[@_key]
-    callback? null, delVal
+    r_key = @rKey key
+    redis.del r_key, (error, reply) ->
+      callback? null, reply?.toString()
 
 module.exports = Session

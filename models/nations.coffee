@@ -74,8 +74,8 @@ updateRecruitable = (callback) ->
     .difference(recruitable)
     .value()
 
-  console.log "RECRUITABLE LENGTH:   #{recruitable.length}"
-  console.log "UNRECRUITABLE LENGTH: #{unrecruitable.length}"
+  #console.log "RECRUITABLE LENGTH:   #{recruitable.length}"
+  #console.log "UNRECRUITABLE LENGTH: #{unrecruitable.length}"
 
   callback? recruitable, unrecruitable
 
