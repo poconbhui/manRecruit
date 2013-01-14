@@ -10,7 +10,8 @@
     "xml2js": "0.2.2",
     "underscore": "1.4.3",
     "longjohn": "0.0.4",
-    "mongodb": "1.2.5"
+    "mongodb": "1.2.5",
+    "supertest": "0.5.1"
   },
   "engines": {
     "node": "0.8.x",
