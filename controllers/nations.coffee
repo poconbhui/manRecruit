@@ -54,8 +54,7 @@ nationController =
               console.log 'ERROR: ', error
               collection = []
 
-            if collection[0]
-              res.locals.recruitedCount = collection?[0].count.current || 0
+            res.locals.recruitedCount = collection?[0].count.current || 0
 
             res.set
               'Cache-Control': 'no-cache',
