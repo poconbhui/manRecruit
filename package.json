@@ -11,7 +11,8 @@
     "underscore": "1.4.3",
     "longjohn": "0.0.4",
     "mongodb": "1.2.5",
-    "supertest": "0.5.1"
+    "supertest": "0.5.1",
+    "coffee-script": "1.4.0"
   },
   "engines": {
     "node": "0.8.x",
