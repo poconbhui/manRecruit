@@ -4,7 +4,7 @@ _ = require('underscore')
 if process.env.REDISTOGO_URL
   rtg_url = require('url').parse(process.env.REDISTOGO_URL)
   redis = require('redis').createClient rtg_url.port, rtg_url.hostname
-  redis.auth rtg.auth.split(':')[1]
+  redis.auth rtg_url.auth.split(':')[1]
 else
   redis = require('redis').createClient()
 
