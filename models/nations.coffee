@@ -171,7 +171,7 @@ class Nation
   # Add nation and data to the recruited list
   addRecruited: (data, callback) ->
     data.date = new Date()
-    data.source = @_sources
+    data.source = @_sources[0]
 
     console.log 'ADDING', @_sources, data
 
