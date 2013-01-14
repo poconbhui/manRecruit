@@ -1,15 +1,47 @@
 doctype 5
 html
-  body
-    div= message
-    form(action='#{action}', method='post')
-      div Username: 
-        input(type='text', name='user[name]')
-      div Password: 
-        input(type='text', name='user[password]')
-      input(type='submit', value='Login')
+  head
+    title manRecruit
+    meta(
+      name="viewport",
+      content="width=device-width, initial-scale=1.0"
+    )
+    link(
+      href="/static/css/bootstrap.min.css",
+      rel="stylesheet",
+      type="text/css"
+    )
+    link(
+      href="/static/css/bootstrap-responsive.min.css",
+      rel="stylesheet",
+      type="text/css"
+    )
+    style
+      html, body{
+        height: 100%;
+      }
+      .navbar-text{
+        padding: 0 20px;
+      }
 
-    if 'development' == environment || 'staging' == environment
-      pre
-        | USERNAME: #{username}
-        | PASSWORD: #{password}
+  body
+    .container
+      h1 manRecruit 3.1
+      h2= message
+      form.form-horizontal(action='#{action}', method='post')
+        .control-group
+          label.control-label(for='user[name]') Username
+          div.controls
+            input(type='text', name='user[name]', placeholder='Username')
+        .control-group
+          label.control-label(for='user[password]') Password
+          div.controls
+            input(type='password', name='user[password]', placeholder='password')
+        .control-group
+          .controls
+            button.btn(type='submit') Sign In
+
+      if 'development' == environment || 'staging' == environment
+        pre
+          | USERNAME: #{username}
+          | PASSWORD: #{password}

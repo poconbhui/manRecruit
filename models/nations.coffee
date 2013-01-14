@@ -24,9 +24,15 @@ mongo.MongoClient.connect mongoURI,
 
 
 # The important arrays!
-recruitable = []
-unrecruitable = []
-recruited = []
+recruitable =
+  feeder: []
+  sinker: []
+unrecruitable =
+  feeder: []
+  sinker: []
+recruited =
+  feeder: []
+  sinker: []
 
 
 # Keep an array of all nations currently in the feeders
@@ -60,18 +66,63 @@ updateNewNations = (callback) ->
 
     callback? newNations
 
+# Keep array of the last 50 nations in each of the sinkers
+newSinkerNations = []
+updateNewSinkerNations = (callback) ->
+  NS = new Nationstates()
+  nations = []
+
+  update = _.after NS.sinkers.length, ->
+
+    # Merge nations list for first 50 entries
+    newSinkerNations.length = 0
+
+    for i in [0..49]
+      for j in [0..(nations.length-1)]
+        newSinkerNations[i*nations.length + j] = nations[j][i]
+
+    nations.length = 0
+
+    callback? newSinkerNations
+
+
+  _.forEach NS.sinkers, (sinker) ->
+    NS.api {'region':sinker, 'q':'nations'}, (response) ->
+      nation_array = response.REGION.NATIONS[0].split(':')
+      nation_array.length = 50
+
+      nations.push nation_array
+      update()
+
+
 
 updateRecruitable = (callback) ->
-  recruitable = _.chain(newNations)
-    .union(recruitable)
+
+  ###
+  #Update Feeder arrays
+  ###
+  recruitable['feeder'] = _.chain(newNations)
+    .union(recruitable['feeder'])
     .intersection(feederNations)
-    .difference(unrecruitable)
+    .difference(unrecruitable['feeder'])
     .uniq()
     .value()
 
   # Only have to worry about newNations that didn't make the list
-  unrecruitable = _.chain(newNations)
-    .difference(recruitable)
+  unrecruitable['feeder'] = _.chain(newNations)
+    .difference(recruitable['feeder'])
+    .value()
+
+  ###
+  #Update Sinker arrays
+  ###
+  recruitable['sinker'] = _.chain(newSinkerNations)
+    .difference(unrecruitable['sinker'])
+    .uniq()
+    .value()
+
+  unrecruitable['sinker'] = _.chain(newSinkerNations)
+    .difference(recruitable['sinker'])
     .value()
 
   #console.log "RECRUITABLE LENGTH:   #{recruitable.length}"
@@ -85,25 +136,30 @@ updateRecruitable = (callback) ->
 ###
 
 class Nation
-  constructor: (@_region) ->
+  constructor: (@_region, @_sources) ->
+    @_sources = _.flatten [@_sources]
 
   # Return all recruitable
   getAllRecruitable: (callback) ->
-    callback null, recruitable
+    callback null, _.pick recruitable, @_sources
 
   countRecruitable: (callback) ->
-    callback null, recruitable.length
+    callback null, _.object(
+      [source, recruitable[source].length] for source in @_sources
+    )
 
   # Pop first nation off list
   popFirstRecruitable: (callback) ->
-    callback null, recruitable.shift()
+    callback null, _.object(
+      [source, recruitable[source].shift()] for source in @_sources
+    )
 
   # return all unrecruitable
   getAllUnrecruitable: (callback) ->
-    callback null, unrecruitable
+    callback null, _.pick unrecruitable, @_sources
 
   addUnrecruitable: (nation) ->
-    unrecruitable.push nation
+    unrecruitable[source].push nation for source in @_sources
 
   _getNationCollection: (callback) ->
     nationDB.collection 'nations', (error, nation_collection) ->
@@ -115,6 +171,9 @@ class Nation
   # Add nation and data to the recruited list
   addRecruited: (data, callback) ->
     data.date = new Date()
+    data.source = @_sources
+
+    console.log 'ADDING', @_sources, data
 
     Nation::_getNationCollection (error, nation_collection) ->
       #recruited.push(data);
@@ -124,10 +183,13 @@ class Nation
       else
         #data._id = data.name;
         nation_collection.insert data, {w:1}, (error,result) ->
+          console.log 'INSERT', error
           callback? error,result
 
   getRecruitedData: (callback) ->
-    callback null, recruited
+    callback null, _.object(
+      [source, recruited[source]] for source in @_sources
+    )
 
   ###
   #Get recruitment numbers from mapReduce run
@@ -164,6 +226,7 @@ class Nation
     )
     
     query.date = { $gte:lastLastSunday }
+    query.source = { $in:@_sources }
 
 
     ###
@@ -223,21 +286,22 @@ class Nation
   find: (nationName, callback) ->
     error = null
 
-    if _.contains recruitable, nationName
-      callback null, {'name': nationName, 'status': 'recruitable'}
-      return true
-    else
-      Nation::_getNationCollection (error, nation_collection) ->
-        nation_collection.findOne {'name':nationName}, (error, nation) ->
-          if error
-            callback null, {'name':nationName, 'status': 'not found'}
-          else
-            if not nation
-              nation = {name: nationName, status: 'not found'}
-            else
-              nation.status = 'recruited'
+    for source in @_sources
+      if _.contains recruitable[source], nationName
+        callback null, {'name': nationName, 'status': 'recruitable'}
+        return true
 
-            callback(null, nation)
+    Nation::_getNationCollection (error, nation_collection) ->
+      nation_collection.findOne {'name':nationName}, (error, nation) ->
+        if error
+          callback null, {'name':nationName, 'status': 'not found'}
+        else
+          if not nation
+            nation = {name: nationName, status: 'not found'}
+          else
+            nation.status = 'recruited'
+
+          callback(null, nation)
 
 
 
@@ -256,33 +320,41 @@ bootNationUpdateLoops = ->
     #    and unrecruitable list
     ###
 
-    # Get newNations
-    updateNewNations (newNations) ->
+    # Get Sinker Nations
+    updateNewSinkerNations (newSinkerNations) ->
 
-      # find newNations already in database
-      nation_collection
-        .find({'name':{$in:newNations}})
-        .toArray (error, results) ->
+      # Get newNations
+      updateNewNations (newNations) ->
 
-          if error
-            console.log 'There was an error loading initial nations: ',error
-            return
+        check_nations = newNations.concat(newSinkerNations)
 
-          # Generate unrecruitable list from database results
-          unrecruitable = _.map results, (result) ->
-            result.name
-          
+        # find newNations already in database
+        nation_collection
+          .find({'name':{$in:check_nations}})
+          .toArray (error, results) ->
 
-          # Find feederNations
-          updateFeederNations ->
+            if error
+              console.log 'There was an error loading initial nations: ',error
+              return
 
-            # NOW generate recruitable list
-            updateRecruitable ->
+            # Generate unrecruitable lists from database results
+            unrecruitable['feeder'] = _.map results, (result) ->
+              result.name
+            unrecruitable['sinker'] = _.map results, (result) ->
+              result.name
+            
 
-              # Boot update loops now that everything is done
-              setInterval(updateNewNations, 30*1000)
-              setInterval(updateFeederNations, 30*1000)
-              setInterval(updateRecruitable, 15*1000)
+            # Find feederNations
+            updateFeederNations ->
+
+              # NOW generate recruitable list
+              updateRecruitable ->
+
+                # Boot update loops now that everything is done
+                setInterval(updateNewNations, 30*1000)
+                setInterval(updateFeederNations, 30*1000)
+                setInterval(updateNewSinkerNations, 30*1000)
+                setInterval(updateRecruitable, 15*1000)
 
 
 module.exports = Nation

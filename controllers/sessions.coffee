@@ -2,7 +2,7 @@ User     = require "#{__dirname}/../models/users"
 Sessions = require "#{__dirname}/../models/sessions"
 crypto   = require 'crypto'
 
-sessionController =
+class SessionController
   new: (req,res) ->
 
     common = ->
@@ -37,23 +37,22 @@ sessionController =
 
 
   create: (req,res) ->
-    user_in = req.body.user
-    user = new User user_in.name
+    user_input = req.body.user
+    user = new User user_input.name
 
-    user.verify user_in.password, (error, result) ->
-      if result
-        crypto.randomBytes 24, (ex,buf) ->
-          token = buf.toString 'hex'
-          session = new Sessions token
+    user.verify user_input.password, (error, verified) ->
+      if verified
+        session = new Sessions user.username
 
-          session.set 'username', user.username
-          session.set 'admin', false
+        session.set 'username', user.username
+        session.set 'admin', false
 
-          res.cookie 'session', token, {signed:true}
+        res.cookie 'username', user.username,
+          signed: true
+          httpOnly: true
+          path: '/'
 
-          res.redirect '/nations'
-      else
-        res.redirect '/nations'
+      res.redirect '/nations'
 
 
   createAdmin: (req,res) ->
@@ -66,38 +65,39 @@ sessionController =
 
 
   destroy: (req,res) ->
-    session = new Sessions req.signedCookies.session
-    session.destroy()
-    res.clearCookie 'session'
+    session = new Sessions req.signedCookies.username
+
+    session.destroy 'username'
+    session.destroy 'admin'
+
+    res.clearCookie 'username'
     res.redirect '/login'
 
 
   loadSessionData: (req,res,next) ->
-    if req.signedCookies.session
-      req.session = new Sessions req.signedCookies.session
+    if req.signedCookies.username
+      res.locals.signed_in = true
+      res.locals.username = req.signedCookies.username
+      req.session = new Sessions req.signedCookies.username
+    else
+      res.locals.signed_in = false
 
     next()
 
 
   requireLoggedIn: (req,res,next) ->
-    
-    unless req.session
+    if res.locals.signed_in
+      next()
+    else
       res.redirect '/login'
-      return false
-
-    req.session.get 'username', (error, username) ->
-      if username
-        next()
-      else
-        res.redirect '/login'
 
 
   requireAdmin: (req,res,next) ->
-    req.session.get 'admin', (error, status) ->
-      if status == true
+    req.session.get 'admin', (error, is_admin) ->
+      if is_admin == 'true'
         next()
       else
         res.redirect '/login/admin'
 
 
-module.exports = sessionController
+module.exports = SessionController

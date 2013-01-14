@@ -55,7 +55,7 @@ class Session
       redis.expire r_key, cleanupInterval
       callback? null, reply?.toString()
 
-  destroy: (callback) ->
+  destroy: (key, callback) ->
     r_key = @rKey key
     redis.del r_key, (error, reply) ->
       callback? null, reply?.toString()

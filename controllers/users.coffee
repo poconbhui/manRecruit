@@ -1,6 +1,6 @@
 User = require "#{__dirname}/../models/users"
 
-userController =
+class UserController
 
   index: (req,res) -> res.render 'users/index.html.jade'
 
@@ -17,4 +17,4 @@ userController =
     user.generatePassword (error, password) ->
       res.send {username,password}
 
-module.exports = userController
+module.exports = UserController

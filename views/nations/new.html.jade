@@ -2,7 +2,6 @@ extends ../application.html
 
 block headers
   style
-    #container { height:50px;}
     #NSdiv {height: 100%;}
     #NSdiv iframe {height:1000px; width:100%}
 
@@ -20,27 +19,32 @@ block headers
     
 
 block content
-  div#controls
-    - if(offeredNation)
-        form(action="/nations", method="post")
+  if offeredNation
+    .row
+      .span4
+        form.form-inline(action="/nations/#{nationSource}", method="post")
           input(type="hidden", name="nation", value="#{offeredNation}")
           .btn-group
             button.btn(
               type="submit",
               name="sent",
-            ) Sent TG to #{offeredNation}
+            ) Sent TG 
+              i.icon-envelope
             button.btn(
               type="submit",
               name="ignored",
-            ) Ignored #{offeredNation}
-    - else
-        p No nations available! 
-          a(href="/nations/new") Check again
+            ) Ignored Nation 
+              i.icon-trash 
+      .span4.well.well-small
+        b(style="margin-left:20px") Nation: #{offeredNation}
 
-        
-  - if(offeredNation){
-      div#NSdiv
+    .row
+      div.span12#NSdiv
         iframe#NSiframe(
           src="http://www.nationstates.net/nation=#{offeredNation}"
         )
-  - }
+
+  else
+    .hero-unit
+      p No nations available! 
+        a(href="/nations/#{nationSource}/new") Check again

@@ -39,9 +39,9 @@ describe 'Authorized User', ->
       .expect(200)
       .end(done)
 
-  it 'should GET /new', (done) ->
+  it 'should GET /nations/feeder/new', (done) ->
     request
-      .get('/nations/new')
+      .get('/nations/feeder/new')
       .set('cookie', cookie)
       .expect(200)
       .end(done)

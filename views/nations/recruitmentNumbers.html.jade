@@ -1,13 +1,15 @@
 extends ../application.html
 
 block content
-  div Totals for #{prevTotalsDate.toDateString()}
-  div
-    ul
+  h1 Recruitment Numbers
+  if prevRecruitmentNumbers.length
+    h2 Totals for #{prevTotalsDate.toDateString()}
+    ol
       for data in prevRecruitmentNumbers
         li #{data.recruiter} - #{data.count}
-  div Current Stats for #{currentTotalsDate.toDateString()}
-  div
-    ul
+
+  if currentRecruitmentNumbers.length
+    h2 Current Stats for #{currentTotalsDate.toDateString()}
+    ol
       for data in currentRecruitmentNumbers
         li #{data.recruiter} - #{data.count}

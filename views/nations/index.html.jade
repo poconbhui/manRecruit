@@ -1,11 +1,38 @@
 extends ../application.html
 
 block content
-  a.btn(href='/nations/new') Recruit From Feeders!
+  .row-fluid
+    div.well.span12
 
-  //- Recruitable Nations
-  h2 Recruitable Nations: #{recruitableCount}
-  ul
-    - _.forEach(recruitableList, function(nation){
-        li= nation
-    - });
+      div.span6(style="text-align:center")
+        a.btn.btn-large.btn-primary(
+          style="margin:0 40px", href='/nations/feeder/new'
+        ) Recruit From Feeders!
+
+      div.span6(style="text-align:center")
+        a.btn.btn-large.btn-primary(
+          style="margin:0 40px", href='/nations/sinker/new'
+        ) Recruit From Sinkers!
+
+  .row
+    .span8
+      //- Recruitable Nations
+      h2 Recruitable Nations
+
+      h3 Feeders: #{recruitableCount.feeder}
+      ul.inline
+        - _.forEach(recruitableList.feeder, function(nation){
+            li= nation
+        - });
+
+      h3 Sinkers: #{recruitableCount.sinker}
+      ul.inline
+        - _.forEach(recruitableList.sinker, function(nation){
+            li= nation
+        - });
+    .span4
+      h2 To Do 
+      ol
+        li Hall of Fame
+        li Auto-editing TGs
+        

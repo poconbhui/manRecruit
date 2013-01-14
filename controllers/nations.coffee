@@ -2,8 +2,6 @@ Nation   = require "#{__dirname}/../models/nations"
 _        = require 'underscore'
 Sessions = require "#{__dirname}/../models/sessions"
 
-Nation = new Nation 'TNI'
-
 randomString = (string_length) ->
   chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz'
   string_length = string_length || 8
@@ -16,78 +14,59 @@ randomString = (string_length) ->
   random_string.join("")
 
 
-nationController =
+class NationController
 
   # Show splash page
   index: (req, res) ->
-    Nation.countRecruitable (error, recruitableCount) ->
-      Nation.getAllRecruitable (error, recruitableList) ->
-        res.locals.recruitableCount = recruitableCount
-        res.locals.recruitableList  = recruitableList
+    feederNations = new Nation 'TNI', ['feeder','sinker']
 
-        res.render 'nations/index.html.jade'
+    feederNations.getAllRecruitable (error, recruitableList) ->
+      res.locals.recruitableList = recruitableList
+      res.render 'nations/index.html.jade'
 
 
   # Present recruiter with a recruitable nation
   new: (req, res) ->
-    Nation.popFirstRecruitable (error, firstRecruitable) ->
-      Nation.countRecruitable (error, recruitableCount) ->
+    nationSource = res.locals.nationSource
+    nations = new Nation 'TNI', nationSource
 
-        res.locals.offeredNation = firstRecruitable
-        res.locals.recruitableCount = recruitableCount
+    nations.popFirstRecruitable (error, firstRecruitable) ->
 
-        ###
-        #Not the best option, but this should hopefully help
-        #with the double nation problem
-        ###
-        Nation.addUnrecruitable res.locals.offeredNation
+      res.locals.offeredNation = firstRecruitable[nationSource]
 
+      ###
+      #Not the best option, but this should hopefully help
+      #with the double nation problem
+      ###
+      nations.addUnrecruitable res.locals.offeredNation
 
-        req.session.get 'username', (error, username) ->
-          if error
-            console.log 'Error getting username in NationController.new'
-            res.redirect '/nations'
-            return
+      res.set
+        'Cache-Control': 'no-cache',
+        'Expires': 'Thu, 01 Dec 1994 16:00:00 GMT'
 
-          Nation.getRecruitmentNumbers username, (error, collection) ->
-            if error
-              console.log 'ERROR: ', error
-              collection = []
-
-            res.locals.recruitedCount = collection[0]?.count.current || 0
-
-            res.set
-              'Cache-Control': 'no-cache',
-              Expires: 'Thu, 01 Dec 1994 16:00:00 GMT'
-
-            res.render 'nations/new.html.jade'
+      res.render 'nations/new.html.jade'
 
 
   # Add recruitable nation data to database if recruited
   create: (req, res) ->
+    nationSource = res.locals.nationSource
+    nations = new Nation 'TNI', nationSource
 
     # If 'sent' button was pressed
     if req.body.sent?
-      # Mark nation as recruited
-      req.session.get 'username', (error, username) ->
+      nations.addRecruited
+        'name':req.body.nation,
+        'recruiter':res.locals.username
+      , (error,result) ->
         if error
-          console.log 'Error loading username in NationController.create'
-          res.redirect "/nations/new?#{randomString()}"
-          return false
+          console.log 'Error Adding Nation: ', error, result
 
-        Nation.addRecruited
-          'name':req.body.nation,
-          'recruiter':username
-        , (error,result) ->
-          if error
-            console.log 'Error Adding Nation: ', error, result
-
-          # Give recruiter new nation
-          res.redirect "/nations/new?#{randomString()}"
+        # Give recruiter new nation
+        res.redirect "/nations/#{nationSource}/new?#{randomString()}"
 
     else
       # Give recruiter a new nation
-      res.redirect "/nations/new?#{randomString()}"
+      res.redirect "/nations/#{nationSource}/new?#{randomString()}"
 
 
   ###
@@ -95,12 +74,16 @@ nationController =
   #It will probably be an ISIS feature
   ###
   show: (req, res) ->
+    nations = new Nation 'TNI', ['feeder','sinker']
+
     requestedNation = req.params.nation
-    Nation.find requestedNation, (error, nation) ->
-      res.json nation
+    nations.find requestedNation, (error, nation_data) ->
+      res.json nation_data
 
   recruitmentNumbers: (req,res) ->
-    Nation.getRecruitmentNumbers (error,collection) ->
+    nations = new Nation 'TNI', ['feeder','sinker']
+
+    nations.getRecruitmentNumbers (error,collection) ->
       prevNumbers = _.chain(collection)
         .filter( (entry) -> entry.count.prev > 0 )
         .map( (entry) ->
@@ -140,25 +123,26 @@ nationController =
       res.render 'nations/recruitmentNumbers.html.jade'
 
   loadNumbers: (req, res, next) ->
-    req.session.get 'username', (error, username) ->
-      if error
-        console.log 'Error getting username in NationController.loadNumbers'
-        res.redirect '/nations'
-        return
+    nations = new Nation 'TNI', ['feeder','sinker']
 
-      Nation.countRecruitable (error, recruitableCount) ->
+    username = res.locals.username
+
+    nations.countRecruitable (error, recruitableCount) ->
+      if error
+        console.log 'ERROR: ', error
+        res.locals.recruitableCount = {feeder:0,sinker:0}
+
+      res.locals.recruitableCount = recruitableCount
+
+      nations.getRecruitmentNumbers username, (error, collection) ->
         if error
           console.log 'ERROR: ', error
-          recruitableCount = 0
+          collection = []
 
-        Nation.getRecruitmentNumbers username, (error, collection) ->
-          if error
-            console.log 'ERROR: ', error
-            collection = []
+        res.locals.recruitedCount = collection[0]?.count.current || 0
 
-          res.locals.recruitableCount = recruitableCount
-          res.locals.recruitedCount = collection[0]?.count.current || 0
+        next()
 
-          next()
 
-module.exports = nationController
+
+module.exports = NationController

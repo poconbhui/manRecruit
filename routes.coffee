@@ -4,17 +4,17 @@
 
 routing = (app) ->
 
-  # Define sessionController routing
-  sessionController = require "#{__dirname}/controllers/sessions"
+  # Define SessionController routing
+  SessionController = require "#{__dirname}/controllers/sessions"
 
-  app.get  '/login',  sessionController.new
-  app.post '/login',  sessionController.create
-  app.get  '/logout', sessionController.destroy
+  app.get  '/login',  SessionController::new
+  app.post '/login',  SessionController::create
+  app.get  '/logout', SessionController::destroy
 
   # Load sessions and require logged in
   middleware = [
-    sessionController.loadSessionData
-    sessionController.requireLoggedIn
+    SessionController::loadSessionData
+    SessionController::requireLoggedIn
   ]
 
 
@@ -23,42 +23,47 @@ routing = (app) ->
   #Require logged in from here
   ###
 
-  # Define nationController routing
-  nationController = require "#{__dirname}/controllers/nations"
+  # Define NationController routing
+  NationController = require "#{__dirname}/controllers/nations"
 
-  middleware.push nationController.loadNumbers
+  middleware.push NationController::loadNumbers
 
   app.get '/', (req,res) ->
     res.redirect '/nations'
-  app.get  '/nations', middleware, nationController.index
-  app.get  '/nations/new', middleware,  nationController.new
-  app.post '/nations', middleware, nationController.create
+  app.get  '/nations', middleware, NationController::index
+
+  app.param 'nationSource', (req, res, next, nationSource) ->
+    res.locals.nationSource = nationSource
+    next()
+
+  app.get  '/nations/:nationSource/new', middleware,  NationController::new
+  app.post '/nations/:nationSource', middleware, NationController::create
 
 
 
   ###
   #Require Admin from here
   ###
-  app.get  '/login/admin', middleware, sessionController.newAdmin
-  app.post '/login/admin', middleware, sessionController.createAdmin
+  app.get  '/login/admin', middleware, SessionController::newAdmin
+  app.post '/login/admin', middleware, SessionController::createAdmin
 
   # Require admin
-  middleware.push sessionController.requireAdmin
+  middleware.push SessionController::requireAdmin
 
 
-  # Continue defining nationController routing
+  # Continue defining NationController routing
   app.get '/nations/recruitmentNumbers',
           middleware,
-          nationController.recruitmentNumbers
-  app.get '/nations/:nation', middleware, nationController.show
+          NationController::recruitmentNumbers
+  app.get '/nations/:nation', middleware, NationController::show
 
 
-  # Define userController routing
-  userController = require "#{__dirname}/controllers/users"
+  # Define UserController routing
+  UserController = require "#{__dirname}/controllers/users"
 
-  app.get  '/users',       middleware, userController.index
-  app.get  '/users/new',   middleware, userController.new
-  app.post '/users',       middleware, userController.create
-  app.get  '/users/:user', middleware, userController.show
+  app.get  '/users',       middleware, UserController::index
+  app.get  '/users/new',   middleware, UserController::new
+  app.post '/users',       middleware, UserController::create
+  app.get  '/users/:user', middleware, UserController::show
 
 module.exports = routing
