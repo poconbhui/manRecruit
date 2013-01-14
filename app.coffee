@@ -17,10 +17,10 @@ if process.env.NODE_ENV is 'development' or 'staging'
 setInterval ->
   obj = process.memoryUsage()
   heapTotal = obj.heapTotal/1024/1024
-  if heapTotal > 15
+  if heapTotal > 400
     console.log "Measured Heap Total of #{heapTotal}. Exiting."
-    process.exit()
-, 10*1000
+    process.exit(1)
+, 30*1000
 
 express = require('express')
 app     = express()
@@ -29,6 +29,11 @@ require 'longjohn'
 
 require("#{__dirname}/config") app
 require("#{__dirname}/routes") app
+
+app.get '/testDeath', (req,res) ->
+  res.send 'Dying'
+  process.exit(0)
+
 
 
 app.listen app.get 'port'
