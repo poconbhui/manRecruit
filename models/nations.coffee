@@ -1,38 +1,16 @@
-mongo        = require('mongodb')
-mongoURI     = process.env.MONGOLAB_URI || 'mongodb://127.0.0.1:27017/nation_db'
-Nationstates = require(__dirname+'/../helpers/nationstates')
-_            = require('underscore')
+nationDB     = require("#{__dirname}/../connections").mongodb
+redis        = require("#{__dirname}/../connections").redis
+Nationstates = require "#{__dirname}/../helpers/nationstates"
+_            = require 'underscore'
 
 
-# Open db connection to MongoDB database
-nationDB = {}
-mongo.MongoClient.connect mongoURI,
-  db:
-    w: 1
-  server:
-    auto_reconnect: true
-, (error, db) ->
+nationDB (db)->
+  nationDB = db
+  bootNationUpdateLoops()
 
-    if error
-      console.log 'ERROR CONNECTING TO MONGODB: ', error
+redis (db) ->
+  redis = db
 
-    # This is fine, because the event loop will keep it open
-    nationDB = db
-
-    bootNationUpdateLoops()
-
-
-
-# The important arrays!
-recruitable =
-  feeder: []
-  sinker: []
-unrecruitable =
-  feeder: []
-  sinker: []
-recruited =
-  feeder: []
-  sinker: []
 
 
 # Keep an array of all nations currently in the feeders
@@ -66,69 +44,80 @@ updateNewNations = (callback) ->
 
     callback? newNations
 
-# Keep array of the last 50 nations in each of the sinkers
-newSinkerNations = []
-updateNewSinkerNations = (callback) ->
+# Keep array of the sinker nations
+sinkerNations = []
+updateSinkerNations = (callback) ->
   NS = new Nationstates()
   nations = []
 
   update = _.after NS.sinkers.length, ->
+    max_len = 0
+    for nationList in nations
+      max_len = nationList.length if nationList.length > max_len
 
-    # Merge nations list for first 50 entries
-    newSinkerNations.length = 0
+    for nationList in nations
+      for j in [0..max_len]
+        sinkerNations.push nationList[j] if nationList[j]
 
-    for i in [0..49]
-      for j in [0..(nations.length-1)]
-        newSinkerNations[i*nations.length + j] = nations[j][i]
-
-    nations.length = 0
-
-    callback? newSinkerNations
+    callback? sinkerNations
 
 
   _.forEach NS.sinkers, (sinker) ->
     NS.api {'region':sinker, 'q':'nations'}, (response) ->
       nation_array = response.REGION.NATIONS[0].split(':')
-      nation_array.length = 50
-
       nations.push nation_array
       update()
 
 
 
+#Keep track of leading nations from previous runs
+feederHead = []
+sinkerHead = []
 updateRecruitable = (callback) ->
+
+  #Get list of new nations since last update
+  getAppendable = (list, head) ->
+    ret = list.slice 0, _.chain(head)
+      .map( (nation) ->
+        list.indexOf nation
+      )
+      .filter( (index) ->
+        index >= 0
+      )
+      .min()
+      .value()
+
+  getHead = (list) ->
+    _.first list, 10
+
+  pushNations = (source, sourceList, newList, head) ->
+    #Push new newList onto source list
+    for nation in getAppendable(newList, head).reverse()
+      redis.lpush source, nation
+
+    #Remove nations not in source
+    redis.lrange source, 0, -1, (error, reply) ->
+      multi = redis.multi()
+      for nation in _.difference(reply, sourceList)
+        multi.lrem source, 0, nation
+      multi.exec()
 
   ###
   #Update Feeder arrays
   ###
-  recruitable['feeder'] = _.chain(newNations)
-    .union(recruitable['feeder'])
-    .intersection(feederNations)
-    .difference(unrecruitable['feeder'])
-    .uniq()
-    .value()
 
-  # Only have to worry about newNations that didn't make the list
-  unrecruitable['feeder'] = _.chain(newNations)
-    .difference(recruitable['feeder'])
-    .value()
+  pushNations 'feeder', feederNations, newNations, feederHead
+  feederHead = getHead newNations
 
   ###
   #Update Sinker arrays
   ###
-  recruitable['sinker'] = _.chain(newSinkerNations)
-    .difference(unrecruitable['sinker'])
-    .uniq()
-    .value()
 
-  unrecruitable['sinker'] = _.chain(newSinkerNations)
-    .difference(recruitable['sinker'])
-    .value()
+  pushNations 'sinker', sinkerNations, sinkerNations, sinkerHead
+  sinkerHead = getHead sinkerNations
 
-  #console.log "RECRUITABLE LENGTH:   #{recruitable.length}"
-  #console.log "UNRECRUITABLE LENGTH: #{unrecruitable.length}"
 
-  callback? recruitable, unrecruitable
+  callback?()
 
 
 ###
@@ -141,25 +130,25 @@ class Nation
 
   # Return all recruitable
   getAllRecruitable: (callback) ->
-    callback null, _.pick recruitable, @_sources
+    multi = redis.multi()
+    multi.lrange source, 0, 50 for source in @_sources
+    multi.exec (error,reply) =>
+      callback error, _.object @_sources, reply
 
   countRecruitable: (callback) ->
-    callback null, _.object(
-      [source, recruitable[source].length] for source in @_sources
-    )
+    multi = redis.multi()
+    multi.llen source for source in @_sources
+    multi.exec (error,reply) =>
+      callback error, _.object @_sources, reply
+
 
   # Pop first nation off list
   popFirstRecruitable: (callback) ->
-    callback null, _.object(
-      [source, recruitable[source].shift()] for source in @_sources
-    )
+    multi = redis.multi()
+    multi.lpop source for source in @_sources
+    multi.exec (error,reply) =>
+      callback error, _.object @_sources, reply
 
-  # return all unrecruitable
-  getAllUnrecruitable: (callback) ->
-    callback null, _.pick unrecruitable, @_sources
-
-  addUnrecruitable: (nation) ->
-    unrecruitable[source].push nation for source in @_sources
 
   _getNationCollection: (callback) ->
     nationDB.collection 'nations', (error, nation_collection) ->
@@ -167,6 +156,7 @@ class Nation
         callback error, null
       else
         callback null,  nation_collection
+
 
   # Add nation and data to the recruited list
   addRecruited: (data, callback) ->
@@ -186,10 +176,6 @@ class Nation
           console.log 'INSERT', error
           callback? error,result
 
-  getRecruitedData: (callback) ->
-    callback null, _.object(
-      [source, recruited[source]] for source in @_sources
-    )
 
   ###
   #Get recruitment numbers from mapReduce run
@@ -286,11 +272,6 @@ class Nation
   find: (nationName, callback) ->
     error = null
 
-    for source in @_sources
-      if _.contains recruitable[source], nationName
-        callback null, {'name': nationName, 'status': 'recruitable'}
-        return true
-
     Nation::_getNationCollection (error, nation_collection) ->
       nation_collection.findOne {'name':nationName}, (error, nation) ->
         if error
@@ -313,20 +294,19 @@ bootNationUpdateLoops = ->
     ### 
     # Initialization:
     #  Find newNations.
-    #  Generate unrecruitable list from nations in newNations that have
-    #    already been recruited.
     #  Find feederNations
+    #  Generate heads from nations already found in the database
     #  Generate recruitable list given newNations, feederNations
     #    and unrecruitable list
     ###
 
     # Get Sinker Nations
-    updateNewSinkerNations (newSinkerNations) ->
+    updateSinkerNations () ->
 
       # Get newNations
-      updateNewNations (newNations) ->
+      updateNewNations () ->
 
-        check_nations = newNations.concat(newSinkerNations)
+        check_nations = newNations.concat(sinkerNations)
 
         # find newNations already in database
         nation_collection
@@ -337,24 +317,35 @@ bootNationUpdateLoops = ->
               console.log 'There was an error loading initial nations: ',error
               return
 
+            results = _.map results, (result) ->
+              result.name
+
             # Generate unrecruitable lists from database results
-            unrecruitable['feeder'] = _.map results, (result) ->
-              result.name
-            unrecruitable['sinker'] = _.map results, (result) ->
-              result.name
-            
+            feederHead = results
 
-            # Find feederNations
-            updateFeederNations ->
+            # Remove results from initial sinker list
+            sinkerNations = _.difference(sinkerNations, results)
 
-              # NOW generate recruitable list
-              updateRecruitable ->
+            # Add newest member in redis list to heads
+            redis.multi()
+              .lrange('feeder', 0,10)
+              .lrange('sinker', 0,10)
+              .exec (error, reply) ->
+                feederHead = feederHead.concat reply[0] if reply[0].length
+                sinkerHead = sinkerHead.concat reply[1] if reply[1].length
 
-                # Boot update loops now that everything is done
-                setInterval(updateNewNations, 30*1000)
-                setInterval(updateFeederNations, 30*1000)
-                setInterval(updateNewSinkerNations, 30*1000)
-                setInterval(updateRecruitable, 15*1000)
+                # Find feederNations
+                updateFeederNations ->
+
+                  # NOW generate recruitable list
+                  updateRecruitable ->
+
+                    # Boot update loops now that everything is done
+                    setInterval(updateNewNations, 30*1000)
+                    setInterval(updateFeederNations, 30*1000)
+                    setInterval(updateSinkerNations, 30*1000)
+
+                    setInterval(updateRecruitable, 15*1000)
 
 
 module.exports = Nation

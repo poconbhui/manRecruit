@@ -34,12 +34,6 @@ class NationController
 
       res.locals.offeredNation = firstRecruitable[nationSource]
 
-      ###
-      #Not the best option, but this should hopefully help
-      #with the double nation problem
-      ###
-      nations.addUnrecruitable res.locals.offeredNation
-
       res.set
         'Cache-Control': 'no-cache',
         'Expires': 'Thu, 01 Dec 1994 16:00:00 GMT'
