@@ -22,6 +22,22 @@ setInterval ->
     process.exit(1)
 , 30*1000
 
+###
+#Check responsiveness of app periodically
+###
+setInterval ->
+  url = process.env.NODE_URL || "http://localhost:3000"
+  require('http').get(url, (res) ->
+    console.log("Got response: #{res.statusCode}")
+  ).on('error', (error) ->
+    console.log("Got error: #{e.message}")
+
+    #In case of error, restart the app
+    process.exit(1)
+  )
+, 10*60*1000
+    
+
 express = require('express')
 app     = express()
 
