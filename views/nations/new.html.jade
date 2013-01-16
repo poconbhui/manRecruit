@@ -76,12 +76,17 @@ block content
               aria-hidden="true"
             ) &times;
             h3 Edit TG
-          .modal-body.center-text
+          .modal-body
             textarea#TGSource.margin-auto(
-              style="width:80%; height:200px;"
+              style="width:80%; height:200px;display:block;"
             ) Hi #NATION#, have a link! #NATION_LINK#
+            dl.dl-horizontal
+              dt #NATION#
+              dd Dear #NATION# -> Dear Example Nation
+              dt #NATION_LINK#
+              dd Link to #NATION_LINK# -> Link to example_nation
           .modal-footer
-            button#SaveTG.btn(data-dismiss="modal") Save
+            button#SaveTG.btn.btn-primary(data-dismiss="modal") Save
 
     .row
       div.span12#NSdiv
