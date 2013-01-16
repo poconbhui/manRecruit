@@ -55,9 +55,12 @@ updateSinkerNations = (callback) ->
     for nationList in nations
       max_len = nationList.length if nationList.length > max_len
 
+    tmpList = []
     for nationList in nations
       for j in [0..max_len]
-        sinkerNations.push nationList[j] if nationList[j]
+        tmpList.push nationList[j] if nationList[j]
+
+    sinkerNations = _.uniq tmpList
 
     callback? sinkerNations
 
@@ -87,20 +90,26 @@ updateRecruitable = (callback) ->
       .min()
       .value()
 
+    console.log list.indexOf 'revert'
+    console.log 'appendable: ',ret
+    ret
+
   getHead = (list) ->
     _.first list, 10
 
   pushNations = (source, sourceList, newList, head) ->
     #Push new newList onto source list
+    multi = redis.multi()
     for nation in getAppendable(newList, head).reverse()
-      redis.lpush source, nation
+      multi.lpush source, nation
+    multi.exec ->
 
-    #Remove nations not in source
-    redis.lrange source, 0, -1, (error, reply) ->
-      multi = redis.multi()
-      for nation in _.difference(reply, sourceList)
-        multi.lrem source, 0, nation
-      multi.exec()
+      #Remove nations not in source
+      redis.lrange source, 0, -1, (error, reply) ->
+        multi = redis.multi()
+        for nation in _.difference(reply, sourceList)
+          multi.lrem source, 0, nation
+        multi.exec()
 
   ###
   #Update Feeder arrays
@@ -300,52 +309,74 @@ bootNationUpdateLoops = ->
     #    and unrecruitable list
     ###
 
-    # Get Sinker Nations
-    updateSinkerNations () ->
+    heads_loaded = () ->
+      # NOW generate recruitable list
+      updateRecruitable ->
 
-      # Get newNations
-      updateNewNations () ->
+        # Boot update loops now that everything is done
+        setInterval(updateNewNations, 30*1000)
+        setInterval(updateFeederNations, 30*1000)
+        setInterval(updateSinkerNations, 30*1000)
 
-        check_nations = newNations.concat(sinkerNations)
+        setInterval(updateRecruitable, 15*1000)
 
-        # find newNations already in database
-        nation_collection
-          .find({'name':{$in:check_nations}})
-          .toArray (error, results) ->
 
-            if error
-              console.log 'There was an error loading initial nations: ',error
-              return
+    run_lists_loaded = () ->
 
-            results = _.map results, (result) ->
-              result.name
+      # find nations in base lists already in the database
+      check_nations = newNations.concat(sinkerNations)
+      nation_collection.find(
+        {'name':{$in:check_nations}}
+      )
+      .toArray (error, results) ->
 
-            # Generate unrecruitable lists from database results
-            feederHead = results
+        if error
+          console.log 'There was an error loading initial nations: ',error
+          return
 
-            # Remove results from initial sinker list
-            sinkerNations = _.difference(sinkerNations, results)
+        # Get array of nation names from database entries
+        results = _.map results, (result) ->
+          result.name
 
-            # Add newest member in redis list to heads
-            redis.multi()
-              .lrange('feeder', 0,10)
-              .lrange('sinker', 0,10)
-              .exec (error, reply) ->
-                feederHead = feederHead.concat reply[0] if reply[0].length
-                sinkerHead = sinkerHead.concat reply[1] if reply[1].length
+        heads_loaded = _.after 2, heads_loaded
 
-                # Find feederNations
-                updateFeederNations ->
+        ###
+        #The feeder nations lists runs a newest first algorithm
+        #so, we only need to worry about finding the most recently
+        #found nation
+        ###
+        feederHead = results
+        redis.lrange 'feeder', 0, 10, (error,reply) ->
+          feederHead.push.apply feederHead, reply
+          heads_loaded()
 
-                  # NOW generate recruitable list
-                  updateRecruitable ->
+        ###
+        #The sinker nations lists runs a total region algorithm,
+        #we need to do one of two things
+        # 1. If redis is already populated, just find the newest head
+        # 2. If redis is not populated, populate it and set a head
+        ###
+        redis.llen 'sinker', (error,reply) ->
+          if reply
+            console.log 'generating head'
+            sinkerHead = results
+          else
+            console.log 'populating redis'
+            multi = redis.multi()
+            for nation in _.difference(sinkerNations, results).reverse()
+              multi.lpush 'sinker', nation
+            multi.exec()
+            sinkerHead = _.first sinkerNations, 10
 
-                    # Boot update loops now that everything is done
-                    setInterval(updateNewNations, 30*1000)
-                    setInterval(updateFeederNations, 30*1000)
-                    setInterval(updateSinkerNations, 30*1000)
+          heads_loaded()
 
-                    setInterval(updateRecruitable, 15*1000)
+
+    run_lists_loaded = _.after 3, run_lists_loaded
+
+    # Preload NSAPI lists
+    updateSinkerNations () -> run_lists_loaded()
+    updateNewNations () -> run_lists_loaded()
+    updateFeederNations () -> run_lists_loaded()
 
 
 module.exports = Nation
