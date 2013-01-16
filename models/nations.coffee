@@ -90,10 +90,6 @@ updateRecruitable = (callback) ->
       .min()
       .value()
 
-    console.log list.indexOf 'revert'
-    console.log 'appendable: ',ret
-    ret
-
   getHead = (list) ->
     _.first list, 10
 
@@ -124,9 +120,6 @@ updateRecruitable = (callback) ->
 
   pushNations 'sinker', sinkerNations, _.first(sinkerNations,50), sinkerHead
   sinkerHead = sinkerNations
-
-  console.log 'sinkerHead now: ',sinkerNations.length, sinkerHead.length
-
 
   callback?()
 
@@ -174,7 +167,7 @@ class Nation
     data.date = new Date()
     data.source = @_sources[0]
 
-    console.log 'ADDING', @_sources, data
+    #console.log 'ADDING', @_sources, data
 
     Nation::_getNationCollection (error, nation_collection) ->
       #recruited.push(data);
@@ -184,7 +177,7 @@ class Nation
       else
         #data._id = data.name;
         nation_collection.insert data, {w:1}, (error,result) ->
-          console.log 'INSERT', error
+          console.log 'addRecruited INSERT ERROR', error
           callback? error,result
 
 
@@ -333,7 +326,8 @@ bootNationUpdateLoops = ->
       .toArray (error, results) ->
 
         if error
-          console.log 'There was an error loading initial nations: ',error
+          console.log 'There was an error loading initial nations
+                      from mongodb: ',error
           return
 
         # Get array of nation names from database entries
@@ -360,10 +354,8 @@ bootNationUpdateLoops = ->
         ###
         redis.llen 'sinker', (error,reply) ->
           if reply
-            console.log 'generating head'
             sinkerHead = results
           else
-            console.log 'populating redis'
             multi = redis.multi()
             for nation in _.difference(sinkerNations, results).reverse()
               multi.lpush 'sinker', nation
