@@ -56,8 +56,8 @@ updateSinkerNations = (callback) ->
       max_len = nationList.length if nationList.length > max_len
 
     tmpList = []
-    for nationList in nations
-      for j in [0..max_len]
+    for j in [0..max_len]
+      for nationList in nations
         tmpList.push nationList[j] if nationList[j]
 
     sinkerNations = _.uniq tmpList
