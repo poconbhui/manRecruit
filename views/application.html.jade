@@ -17,13 +17,22 @@ html
       type="text/css"
     )
     style
-      html, body{
+      html, body {
         height: 100%;
       }
-      .navbar-text{
+      .navbar-text {
         padding: 0 20px;
       }
+      .margin-auto {
+        margin: auto;
+      }
+      .center-text {
+        text-align: center;
+      }
     script(src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js")
+    script(src="/static/js/bootstrap.min.js")
+    script(src="/static/js/jquery.cookie.js")
+    script(type="text/javascript", src="/static/js/jquery.TG_autofill.js")
 
     block headers
 
@@ -46,3 +55,4 @@ html
               a(href="/logout") Logout
           
       block content
+

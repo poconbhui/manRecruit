@@ -33,8 +33,11 @@ routing = (app) ->
   app.get  '/nations', middleware, NationController::index
 
   app.param 'nationSource', (req, res, next, nationSource) ->
-    res.locals.nationSource = nationSource
-    next()
+    if nationSource in ['feeder','sinker']
+      res.locals.nationSource = nationSource
+      next()
+    else
+      res.redirect '/nations'
 
   app.get  '/nations/:nationSource/new', middleware,  NationController::new
   app.post '/nations/:nationSource', middleware, NationController::create
