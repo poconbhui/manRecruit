@@ -122,8 +122,10 @@ updateRecruitable = (callback) ->
   #Update Sinker arrays
   ###
 
-  pushNations 'sinker', sinkerNations, sinkerNations, sinkerHead
-  sinkerHead = getHead sinkerNations
+  pushNations 'sinker', sinkerNations, _.first(sinkerNations,50), sinkerHead
+  sinkerHead = sinkerNations
+
+  console.log 'sinkerHead now: ',sinkerNations.length, sinkerHead.length
 
 
   callback?()
