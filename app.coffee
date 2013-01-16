@@ -28,11 +28,12 @@ setInterval ->
 setInterval ->
   url = process.env.NODE_URL || "http://localhost:3000"
   require('http').get(url, (res) ->
-    console.log("Got response: #{res.statusCode}")
+    console.log "Http request got response: #{res.statusCode}"
   ).on('error', (error) ->
-    console.log("Got error: #{e.message}")
+    console.log "Http request got error: #{e.message}"
 
     #In case of error, restart the app
+    console.log "Http request failed. Exiting."
     process.exit(1)
   )
 , 10*60*1000
