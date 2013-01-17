@@ -42,22 +42,34 @@ html
     block headers
 
   body
-    div.container
-      div.navbar
-        div.navbar-inner
+    .navbar
+      .navbar-inner
+        .container
           a.brand(href="/") manRecruit
-          ul.nav
-            li
-              a(href="/nations/feeder/new") Feeders recruitable #{recruitableCount.feeder}
-            li
-              a(href="/nations/sinker/new") Sinkers recruitable #{recruitableCount.sinker}
-            li.navbar-text Recruited #{recruitedCount}
-          ul.nav.pull-right
-            if signed_in
+
+          a.btn.btn-navbar(
+            data-toggle="collapse",
+            data-target=".nav-collapse"
+          )
+            span.icon-bar
+            span.icon-bar
+            span.icon-bar
+
+          .nav-collapse.collapse
+            ul.nav
+              li(class=(nationSource === 'feeder'? "active":null))
+                a(href="/nations/feeder/new")
+                  | New Nations (#{recruitableCount.feeder})
+              li(class=(nationSource === 'sinker'? "active":null))
+                a(href="/nations/sinker/new")
+                  | Refounded Nations (#{recruitableCount.sinker})
+            ul.nav.pull-right
+              if signed_in
+                li
+                  span.navbar-text Hi #{username}! (#{recruitedCount})
               li
-                span.navbar-text Hi #{username}!
-            li
-              a(href="/logout") Logout
+                a(href="/logout") Logout
           
+    .container
       block content
 
