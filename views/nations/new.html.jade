@@ -24,13 +24,21 @@ block headers
       var TGCookieName = "#{nationSource}_TG";
       var TG = $.cookie(TGCookieName) || "";
 
-      $TGSource = $('#TGSource')
-      $TGSource.val(TG);
-      $TGSource.change(function() {
-        $('#TG').val($(this).val()).TG_autofill("#{offeredNation}")
-      });
+      var $TGSource = $('#TGSource');
+      var $TGParsed = $('#TGParsed');
 
-      $TGSource.change();
+      $TGSource
+        .val(TG)
+        .change(function() {
+          $TGParsed.val($(this).val()).TG_autofill("#{offeredNation}")
+        })
+        .change();
+
+      $TGParsed
+        .click(function() {
+          $(this).select();
+        })
+        .click();
 
       $('#SaveTG').click(function() {
         $.cookie(TGCookieName, $TGSource.val());
@@ -62,7 +70,7 @@ block content
           b(style="margin-left:20px") Nation: #{offeredNation}
       .span4.require-js
         .center-text.input-append
-          input#TG(type="text")
+          input#TGParsed(type="text")
           button#EditTG.btn(
             type="button",
             data-toggle="modal",
