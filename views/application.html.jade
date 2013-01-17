@@ -57,6 +57,7 @@ html
 
           .nav-collapse.collapse
             ul.nav
+              - if(typeof nationSource == 'undefined') nationSource = null
               li(class=(nationSource === 'feeder'? "active":null))
                 a(href="/nations/feeder/new")
                   | New Nations (#{recruitableCount.feeder})
