@@ -14,7 +14,9 @@
     "longjohn": "0.0.4",
     "mongodb": "1.2.5",
     "coffee-script": "1.4.0",
-    "redis": "0.8.2"
+    "redis": "0.8.2",
+    "connect-assets": "2.3.3",
+    "stylus": "0.32.0"
   },
   "devDependencies": {
     "supertest": "0.5.1",

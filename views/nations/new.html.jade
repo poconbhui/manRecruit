@@ -1,51 +1,5 @@
 extends ../application.html
 
-block headers
-  style
-    #NSdiv {height: 100%;}
-    #NSdiv iframe {height:1000px; width:100%}
-
-  script(type="text/javascript")
-    // Fix the damn heights
-    $(function() {
-      var $NSdiv = $('#NSdiv');
-      var $NSiframe = $('#NSiframe');
-
-      if($NSdiv.length) {
-        var height = $(window).height() - $NSdiv.offset().top;
-
-        $NSdiv.height(height - 10);
-        $NSiframe.height(height - 10);
-      }
-    })
-
-  script(type="text/javascript")
-    $(function() {
-      var TGCookieName = "#{nationSource}_TG";
-      var TG = $.cookie(TGCookieName) || "";
-
-      var $TGSource = $('#TGSource');
-      var $TGParsed = $('#TGParsed');
-
-      $TGSource
-        .val(TG)
-        .change(function() {
-          $TGParsed.val($(this).val()).TG_autofill("#{offeredNation}")
-        })
-        .change();
-
-      $TGParsed
-        .click(function() {
-          $(this).select();
-        })
-        .click();
-
-      $('#SaveTG').click(function() {
-        $.cookie(TGCookieName, $TGSource.val());
-      });
-
-    });
-
 block content
   if offeredNation
     .row
@@ -53,7 +7,16 @@ block content
         form.margin-auto.form-inline(
           action="/nations/#{nationSource}", method="post"
         )
-          input(type="hidden", name="nation", value="#{offeredNation}")
+          input#offeredNation(
+            type="hidden",
+            name="nation",
+            value="#{offeredNation}"
+          )
+          input#nationSource(
+            type="hidden",
+            name="source",
+            value="#{nationSource}"
+          )
           .btn-group
             button.btn(
               type="submit",
