@@ -67,8 +67,7 @@ class SessionController
   destroy: (req,res) ->
     session = new Sessions req.signedCookies.username
 
-    session.destroy 'username'
-    session.destroy 'admin'
+    session.destroy()
 
     res.clearCookie 'username'
     res.redirect '/login'

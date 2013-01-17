@@ -9,22 +9,6 @@ sessions = {}
 cleanupInterval = 30*60
 
 
-###
-# Periodically check sessions and delete any where the last access
-# is longer than 30 mins
-###
-
-###
-setInterval ->
-  console.log 'Running Session Cleanup'
-  _.each sessions, (value,key) ->
-    if value.lastAccess < (new Date() - cleanupInterval)
-      console.log "Removing Session: #{key}"
-      delete sessions[key]
-, cleanupInterval
-###
-
-
 class Session
 
   constructor: (@_key) ->
@@ -33,6 +17,7 @@ class Session
 
     # Update last access time
     # @_session.lastAccess = new Date()
+    console.log 'CONSTRUCTING SESSION', @_key
 
 
   rKey: (key) ->
@@ -53,8 +38,13 @@ class Session
       callback? null, reply?.toString()
 
   destroy: (key, callback) ->
-    r_key = @rKey key
-    redis.del r_key, (error, reply) ->
-      callback? null, reply?.toString()
+    if key?
+      r_key = @rKey key
+      redis.del r_key, (error, reply) ->
+        callback? null, reply?.toString()
+    else
+      r_key = @rKey '*'
+      redis.keys r_key, (error, reply) ->
+        redis.multi( ['del',key] for key in reply ).exec()
 
 module.exports = Session

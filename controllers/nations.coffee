@@ -119,7 +119,7 @@ class NationController
   loadNumbers: (req, res, next) ->
     nations = new Nation 'TNI', ['feeder','sinker']
 
-    username = res.locals.username
+    res.locals.nationSource ||= null
 
     nations.countRecruitable (error, recruitableCount) ->
       if error
@@ -128,7 +128,7 @@ class NationController
 
       res.locals.recruitableCount = recruitableCount
 
-      nations.getRecruitmentNumbers username, (error, collection) ->
+      nations.getRecruitmentNumbers res.locals.username, (error, collection) ->
         if error
           console.log 'ERROR: ', error
           collection = []
