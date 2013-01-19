@@ -52,7 +52,7 @@ class SessionController
           httpOnly: true
           path: '/'
 
-      res.redirect '/nations'
+      res.redirect '/'
 
 
   createAdmin: (req,res) ->
@@ -61,7 +61,7 @@ class SessionController
     if user.name == 'admin' and user.password == 'I_HEART_TD'
       req.session.set 'admin', true
 
-    res.redirect '/nations'
+    res.redirect '/'
 
 
   destroy: (req,res) ->

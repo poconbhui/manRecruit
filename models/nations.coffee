@@ -124,6 +124,91 @@ updateRecruitable = (callback) ->
   callback?()
 
 
+
+###
+#Boot Nation Update Loops
+###
+bootNationUpdateLoops = ->
+  Nation::_getNationCollection (error, nation_collection) ->
+    ### 
+    # Initialization:
+    #  Find newNations.
+    #  Find feederNations
+    #  Generate heads from nations already found in the database
+    #  Generate recruitable list given newNations, feederNations
+    #    and unrecruitable list
+    ###
+
+    heads_loaded = () ->
+      # NOW generate recruitable list
+      updateRecruitable ->
+
+        # Boot update loops now that everything is done
+        setInterval(updateNewNations, 30*1000)
+        setInterval(updateFeederNations, 30*1000)
+        setInterval(updateSinkerNations, 30*1000)
+
+        setInterval(updateRecruitable, 15*1000)
+
+
+    run_lists_loaded = () ->
+
+      # find nations in base lists already in the database
+      check_nations = newNations.concat(sinkerNations)
+      nation_collection.find(
+        {'name':{$in:check_nations}}
+      )
+      .toArray (error, results) ->
+
+        if error
+          console.log 'There was an error loading initial nations
+                      from mongodb: ',error
+          return
+
+        # Get array of nation names from database entries
+        results = _.map results, (result) ->
+          result.name
+
+        heads_loaded = _.after 2, heads_loaded
+
+        ###
+        #The feeder nations lists runs a newest first algorithm
+        #so, we only need to worry about finding the most recently
+        #found nation
+        ###
+        feederHead = results
+        redis.lrange 'feeder', 0, 10, (error,reply) ->
+          feederHead.push.apply feederHead, reply
+          heads_loaded()
+
+        ###
+        #The sinker nations lists runs a total region algorithm,
+        #we need to do one of two things
+        # 1. If redis is already populated, just find the newest head
+        # 2. If redis is not populated, populate it and set a head
+        ###
+        redis.llen 'sinker', (error,reply) ->
+          if reply
+            sinkerHead = results
+          else
+            multi = redis.multi()
+            for nation in _.difference(sinkerNations, results).reverse()
+              multi.lpush 'sinker', nation
+            multi.exec()
+            sinkerHead = _.first sinkerNations, 10
+
+          heads_loaded()
+
+
+    run_lists_loaded = _.after 3, run_lists_loaded
+
+    # Preload NSAPI lists
+    updateSinkerNations () -> run_lists_loaded()
+    updateNewNations () -> run_lists_loaded()
+    updateFeederNations () -> run_lists_loaded()
+
+
+
 ###
 #Define Nation object from here
 ###
@@ -288,89 +373,6 @@ class Nation
 
           callback(null, nation)
 
-
-
-###
-#Boot Nation Update Loops
-###
-bootNationUpdateLoops = ->
-  Nation::_getNationCollection (error, nation_collection) ->
-    ### 
-    # Initialization:
-    #  Find newNations.
-    #  Find feederNations
-    #  Generate heads from nations already found in the database
-    #  Generate recruitable list given newNations, feederNations
-    #    and unrecruitable list
-    ###
-
-    heads_loaded = () ->
-      # NOW generate recruitable list
-      updateRecruitable ->
-
-        # Boot update loops now that everything is done
-        setInterval(updateNewNations, 30*1000)
-        setInterval(updateFeederNations, 30*1000)
-        setInterval(updateSinkerNations, 30*1000)
-
-        setInterval(updateRecruitable, 15*1000)
-
-
-    run_lists_loaded = () ->
-
-      # find nations in base lists already in the database
-      check_nations = newNations.concat(sinkerNations)
-      nation_collection.find(
-        {'name':{$in:check_nations}}
-      )
-      .toArray (error, results) ->
-
-        if error
-          console.log 'There was an error loading initial nations
-                      from mongodb: ',error
-          return
-
-        # Get array of nation names from database entries
-        results = _.map results, (result) ->
-          result.name
-
-        heads_loaded = _.after 2, heads_loaded
-
-        ###
-        #The feeder nations lists runs a newest first algorithm
-        #so, we only need to worry about finding the most recently
-        #found nation
-        ###
-        feederHead = results
-        redis.lrange 'feeder', 0, 10, (error,reply) ->
-          feederHead.push.apply feederHead, reply
-          heads_loaded()
-
-        ###
-        #The sinker nations lists runs a total region algorithm,
-        #we need to do one of two things
-        # 1. If redis is already populated, just find the newest head
-        # 2. If redis is not populated, populate it and set a head
-        ###
-        redis.llen 'sinker', (error,reply) ->
-          if reply
-            sinkerHead = results
-          else
-            multi = redis.multi()
-            for nation in _.difference(sinkerNations, results).reverse()
-              multi.lpush 'sinker', nation
-            multi.exec()
-            sinkerHead = _.first sinkerNations, 10
-
-          heads_loaded()
-
-
-    run_lists_loaded = _.after 3, run_lists_loaded
-
-    # Preload NSAPI lists
-    updateSinkerNations () -> run_lists_loaded()
-    updateNewNations () -> run_lists_loaded()
-    updateFeederNations () -> run_lists_loaded()
 
 
 module.exports = Nation

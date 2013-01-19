@@ -17,7 +17,6 @@ class Session
 
     # Update last access time
     # @_session.lastAccess = new Date()
-    console.log 'CONSTRUCTING SESSION', @_key
 
 
   rKey: (key) ->
