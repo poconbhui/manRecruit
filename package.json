@@ -18,12 +18,12 @@
     "coffee-script" : "1.4.0",
     "redis"         : "0.8.2",
     "connect-assets": "2.3.3",
-    "stylus"        : "0.32.0"
+    "stylus"        : "0.32.0",
+    "supertest": "0.5.1",
+    "mocha"    : "1.8.1"
   },
 
   "devDependencies": {
-    "supertest": "0.5.1",
-    "mocha"    : "1.8.1"
   },
 
   "engines": {
