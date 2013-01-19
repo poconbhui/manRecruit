@@ -19,8 +19,9 @@
     "redis"         : "0.8.2",
     "connect-assets": "2.3.3",
     "stylus"        : "0.32.0",
-    "supertest": "0.5.1",
-    "mocha"    : "1.8.1"
+    "supertest"     : "0.5.1",
+    "mocha"         : "1.8.1",
+    "npm"           : "1.2.2"
   },
 
   "devDependencies": {
