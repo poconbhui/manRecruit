@@ -27,6 +27,7 @@ setInterval ->
 , 60*1000
 
 
-app.listen app.get 'port'
+if process.env.NODE_ENV != 'test'
+  app.listen app.get 'port'
 
 module.exports = app

@@ -4,7 +4,7 @@
 
   "scripts": {
     "start": "coffee app.coffee",
-    "test" : "mocha --compilers coffee:coffee-script -R spec",
+    "test" : "NODE_ENV=test mocha --compilers coffee:coffee-script -R spec",
     "clear_nation_lists": "coffee scripts/clear_nation_lists.coffee"
   },
 
