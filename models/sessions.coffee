@@ -2,7 +2,7 @@ _ = require('underscore')
 
 redis = require("#{__dirname}/../connections").redis
 
-redis (db) ->
+redis (error, db) ->
   redis = db
 
 sessions = {}

@@ -11,9 +11,16 @@ user = new User randomString
 describe 'Permissions and Routes', ->
   describe 'Unauthorized User', ->
 
-    it 'Should be redirected to /login when trying to GET /', (done) ->
+    it 'Should be redirected to /nations when trying to GET /', (done) ->
       request
         .get('/')
+          .expect('Moved Temporarily. Redirecting to /nations')
+          .expect(302)
+          .end(done)
+
+    it 'Should be redirected to /login when trying to GET /nations', (done) ->
+      request
+        .get('/nations')
           .expect('Moved Temporarily. Redirecting to /login')
           .expect(302)
           .end(done)

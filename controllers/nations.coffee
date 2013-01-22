@@ -2,17 +2,7 @@ Nation   = require "#{__dirname}/../models/nations"
 _        = require 'underscore'
 Sessions = require "#{__dirname}/../models/sessions"
 
-randomString = (string_length) ->
-  chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz'
-  string_length = string_length || 8
-  random_string = []
-
-  while random_string.length < string_length
-    rnum = Math.floor(Math.random() * chars.length)
-    random_string.push chars.substring(rnum,rnum+1)
-
-  random_string.join("")
-
+randomString = () -> Math.random().toString(36).substring(2,7)
 
 class NationController
 
@@ -121,21 +111,24 @@ class NationController
 
     res.locals.nationSource ||= null
 
+    next = _.after 2, next
+
     nations.countRecruitable (error, recruitableCount) ->
       if error
-        console.log 'ERROR: ', error
+        console.log 'countRecruitable ERROR: ', error
         res.locals.recruitableCount = {feeder:0,sinker:0}
 
       res.locals.recruitableCount = recruitableCount
+      next()
 
-      nations.getRecruitmentNumbers res.locals.username, (error, collection) ->
-        if error
-          console.log 'ERROR: ', error
-          collection = []
+    nations.getRecruitmentNumbers (error, collection) ->
+      if error
+        console.log 'getRN ERROR: ', error
+        collection = []
 
-        res.locals.recruitedCount = collection[0]?.count.current || 0
-
-        next()
+      res.locals.recruitedCount = collection[0]?.count.current || 0
+      next()
+    , res.locals.username
 
 
 

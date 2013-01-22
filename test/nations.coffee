@@ -1,18 +1,22 @@
 #!/usr/bin/env mocha
 
 Nation = require "#{__dirname}/../models/nations"
-
-nations = new Nation 'TNI', ['feeder','sinker']
+_      = require "underscore"
 
 describe 'Nations', ->
+
   describe 'popFirstRecruitable', ->
 
-    it 'popFirstRecruitable should return unique recruitable nations', ->
+    it 'should return unique recruitable nations', (done) ->
       
+      nations = new Nation 'TNI', ['feeder','sinker']
+
       feederList = {}
       sinkerList = {}
 
-      for i in [1..100]
+      done = _.after 50, done
+
+      for i in [1..50]
         nations.popFirstRecruitable (error, callback) ->
           if error
             throw error
@@ -28,3 +32,4 @@ describe 'Nations', ->
               throw new Error "Nation returned twice for feeder"
             else
               sinkerList[callback.sinker] = true
+          done()

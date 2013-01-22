@@ -6,7 +6,7 @@ require 'longjohn'
 require("#{__dirname}/config") app
 require("#{__dirname}/routes") app
 
-diagnostics = require "#{__dirname}/diagnostics"
+diagnostics = require "#{__dirname}/utils/diagnostics"
 
 # Run diagnostics every minute
 setInterval ->

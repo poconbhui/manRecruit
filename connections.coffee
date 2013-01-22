@@ -5,7 +5,7 @@ connections =
   _mongoDB: null
   mongodb: (callback) ->
     if connections._mongoDB
-      callback connections._mongoDB
+      callback null, connections._mongoDB
 
     else
 
@@ -17,19 +17,21 @@ connections =
           auto_reconnect: true
       , (error, db) ->
 
-          if error
-            console.log 'ERROR CONNECTING TO MONGODB: ', error
+        if error
+          console.log 'ERROR CONNECTING TO MONGODB: ', error
+          callback error, null
+          return false
 
-          connections._mongoDB = db
+        connections._mongoDB = db
 
-          # This is fine, because the event loop will keep it open
-          callback db
+        # This is fine, because the event loop will keep it open
+        callback null, db
 
 
   _redisDB: null
   redis: (callback) ->
     if connections._redisDB
-      callback connections._redisDB
+      callback null, connections._redisDB
 
     else
 
@@ -42,7 +44,7 @@ connections =
         redis = require('redis').createClient()
 
       connections._redisDB = redis
-      callback redis
+      callback null, redis
 
 
 module.exports = connections
