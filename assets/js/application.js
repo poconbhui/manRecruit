@@ -2,7 +2,7 @@
 //= require jquery.cookie.js
 //= require jquery.TG_autofill.js
 
-$(function(){ $('.require-js').show(); });
+$(function(){ $('.require-js').show().attr("aria-hidden","false"); });
 
 
 // Fix the damn heights
@@ -11,10 +11,13 @@ $(function() {
   var $NSiframe = $('#NSiframe');
 
   if($NSdiv.length) {
-    var height = $(window).height() - $NSdiv.offset().top;
+    $(window).resize(function() {
+      var height = $(window).height() - $NSdiv.offset().top;
 
-    $NSdiv.height(height - 10);
-    $NSiframe.height(height - 10);
+      $NSdiv.height(height - 10);
+      $NSiframe.height(height - 10);
+    })
+    .resize();
   }
 });
 

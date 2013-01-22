@@ -2,7 +2,7 @@ extends ../application.html
 
 block content
   if offeredNation
-    .row
+    section.row
       .span4.center-text
         form.margin-auto.form-inline(
           action="/nations/#{nationSource}", method="post"
@@ -31,7 +31,9 @@ block content
       .span4
         div.well.well-small
           b(style="margin-left:20px") Nation: #{offeredNation}
-      .span4.require-js
+      .span4.require-js(
+        aria-hidden="true"
+      )
         .center-text.input-append
           textarea#TGParsed(rows="1",style="overflow:hidden")
           button#EditTG.btn(
@@ -48,18 +50,28 @@ block content
             ) &times;
             h3 Edit TG
           .modal-body
-            textarea#TGSource.margin-auto(
-              style="width:80%; height:200px;display:block;"
-            ) Hi #NATION#, have a link! #NATION_LINK#
-            dl.dl-horizontal
-              dt #NATION#
-              dd Dear #NATION# -> Dear Example Nation
-              dt #NATION_LINK#
-              dd Link to #NATION_LINK# -> Link to example_nation
+            form
+              textarea#TGSource.margin-auto(
+                style="width:100%; height:200px; display:block; -webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box;"
+              )
+              .help-block.well(style="margin-top:10px;")
+                p
+                  | A nation's name is inserted automatically using the
+                  | #NATION# tag.
+                p
+                  | Eg, while recruiting "The Novel Questioners
+                  | of The New Inquisitors", a TG written
+                pre
+                  | "Hi, #NATION#, how would you like to play some chess?"
+                p
+                  | will be formatted
+                pre
+                  | "Hi, The New Inquisitors, how would you like to play
+                  | some chess?"
           .modal-footer
             button#SaveTG.btn.btn-primary(data-dismiss="modal") Save
 
-    .row
+    section.row
       div.span12#NSdiv
         iframe#NSiframe(
           src="http://www.nationstates.net/nation=#{offeredNation}"
