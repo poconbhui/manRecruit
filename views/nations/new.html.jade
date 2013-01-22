@@ -29,13 +29,13 @@ block content
             ) Ignored Nation 
               i.icon-trash 
       .span4
-        div.well.well-small
-          b(style="margin-left:20px") Nation: #{offeredNation}
+          p.text-info.center-text(style="margin-top:5px;font-size:1.3em")
+            strong #{offeredNation}
       .span4.require-js(
         aria-hidden="true"
       )
         .center-text.input-append
-          textarea#TGParsed(rows="1",style="overflow:hidden")
+          textarea#TGParsed(rows="1",style="overflow:hidden;resize:none")
           button#EditTG.btn(
             type="button",
             data-toggle="modal",
