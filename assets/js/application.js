@@ -2,8 +2,6 @@
 //= require jquery.cookie.js
 //= require jquery.TG_autofill.js
 
-$(function(){ $('.require-js').show().attr("aria-hidden","false"); });
-
 
 // Fix the damn heights
 $(function() {
@@ -50,5 +48,4 @@ $(function() {
       $.cookie(TGCookieName, $TGSource.val());
     });
   }
-
 });

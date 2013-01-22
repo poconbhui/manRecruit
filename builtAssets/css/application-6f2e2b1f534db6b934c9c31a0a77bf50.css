@@ -19,7 +19,7 @@
 html,body{height:100%}
 .margin-auto{margin:auto}
 .center-text{text-align:center}
-.require-js{display:none}
+.no-js .require-js{display:none}
 .navbar-static-top{margin-bottom:20px}
 .navbar-text{padding:0 20px}
 .modal{overflow-y:auto;max-height:80%}

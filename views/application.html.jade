@@ -1,5 +1,5 @@
 doctype 5
-html( lang="en" )
+html.no-js( lang="en" )
   head
     title manRecruit
     meta(
@@ -9,6 +9,9 @@ html( lang="en" )
     !=css('application')
     //if lt IE 9
       script(src="//html5shim.googlecode.com/svn/trunk/html5.js")
+    script(type="text/javascript")
+      document.documentElement.className =
+        document.documentElement.className.replace(/\bno-js\b/,'js');
 
     block headers
 
