@@ -111,7 +111,7 @@ class NationController
       next()
 
     today = new Date
-    lastSunday = Nation::lastSunday
+    lastSunday = Nation::lastSunday()
     nations.getRecruitmentNumbers
       recruiter:res.locals.username
       date:{start:lastSunday, end:today},
