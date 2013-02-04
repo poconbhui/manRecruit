@@ -67,44 +67,33 @@ class NationController
   recruitmentNumbers: (req,res) ->
     nations = new Nation 'TNI', ['feeder','sinker']
 
-    nations.getRecruitmentNumbers (error,collection) ->
-      prevNumbers = _.chain(collection)
-        .filter( (entry) -> entry.count.prev > 0 )
-        .map( (entry) ->
-          'recruiter': entry.recruiter,
-          'count':     entry.count.prev
-        )
-        .sortBy( (entry) -> -entry.count.prev )
-        .value()
+    today = new Date
+    lastSunday = Nation::lastSunday()
+    lastLastSunday = new Date(lastSunday)
+    lastLastSunday.setUTCDate lastSunday.getUTCDate() - 7
 
-      currentNumbers = _.chain(collection)
-        .filter( (entry) -> entry.count.current > 0 )
-        .map( (entry) ->
-          'recruiter': entry.recruiter,
-          'count':     entry.count.current
-        )
-        .sortBy( (entry) -> -entry.count.current )
-        .value()
-
-      # Find last Sunday
-      today = new Date()
-      prevDate = new Date(
-        today.getUTCFullYear(),
-        today.getUTCMonth(),
-        today.getUTCDate()
-      )
-
-      prevDate.setUTCDate prevDate.getUTCDate() - prevDate.getUTCDay()
-      nextDate = new Date prevDate
-      nextDate.setUTCDate nextDate.getUTCDate() + 7
-
-      res.locals.prevTotalsDate = prevDate
-      res.locals.prevRecruitmentNumbers = prevNumbers
-
-      res.locals.currentTotalsDate = nextDate
-      res.locals.currentRecruitmentNumbers = currentNumbers
+    render = _.after 2, () ->
+      data = [{recruiter:'r', count:1}]
 
       res.render 'nations/recruitmentNumbers.html.jade'
+
+    nations.getRecruitmentNumbers
+      date:{start:lastSunday, end:today},
+      (error,data) ->
+        res.locals.currentTotalsDate = lastSunday
+        res.locals.currentRecruitmentNumbers = data
+
+        render()
+
+    nations.getRecruitmentNumbers
+      date:{start:lastLastSunday, end:lastSunday},
+      (error,data) ->
+        res.locals.prevTotalsDate = lastLastSunday
+        res.locals.prevRecruitmentNumbers = data
+
+        render()
+
+
 
   loadNumbers: (req, res, next) ->
     nations = new Nation 'TNI', ['feeder','sinker']
@@ -121,14 +110,17 @@ class NationController
       res.locals.recruitableCount = recruitableCount
       next()
 
-    nations.getRecruitmentNumbers (error, collection) ->
-      if error
-        console.log 'getRN ERROR: ', error
-        collection = []
+    today = new Date
+    lastSunday = Nation::lastSunday
+    nations.getRecruitmentNumbers
+      recruiter:res.locals.username
+      date:{start:lastSunday, end:today},
+      (error, data) ->
+        if error
+          data = []
 
-      res.locals.recruitedCount = collection[0]?.count.current || 0
-      next()
-    , res.locals.username
+        res.locals.recruitedCount = data[0]?.count || 0
+        next()
 
 
 

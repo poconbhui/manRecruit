@@ -56,86 +56,42 @@ class Nation
 
 
   ###
-  #Get recruitment numbers from mapReduce run
+  #Helper method for getting date of last Sunday
   ###
-  getRecruitmentNumbers: (callback, recruiter) ->
-
-    ###
-    # Get important dates here
-    ###
-
+  lastSunday: () ->
     # Get date of two Sundays ago
     today = new Date()
 
-    #today.setUTCDate(today.getUTCDate() + 8)
-    lastLastSunday = new Date(
+    lastSunday = new Date(
       today.getUTCFullYear(),
       today.getUTCMonth(),
       today.getUTCDate()
     )
-    lastLastSunday.setUTCDate(
-      lastLastSunday.getUTCDate() - lastLastSunday.getUTCDay() - 7
+    lastSunday.setUTCDate(
+      lastSunday.getUTCDate() - lastSunday.getUTCDay()
     )
-    
-    query =
-      date:   { $gte:lastLastSunday }
-      source: { $in:@_sources }
+    return lastSunday
 
-    query.recruiter = recruiter if recruiter?
+  ###
+  #Get recruitment numbers from group function
+  ###
+  getRecruitmentNumbers: (query, callback) ->
 
+    parsedQuery = {}
+    parsedQuery.recruiter = query.recruiter if query.recruiter?
 
-    ###
-    # Define MapReduce functions here
-    ###
+    parsedQuery.date = {}
+    parsedQuery.date.$gt  = query.date.start
+    parsedQuery.date.$lte = query.date.end
 
-    map = ->
-      #global emit: false
+    parsedQuery.source = { $in:@_sources }
 
-      doc = this
-      if doc.date and doc.recruiter and doc.name
-
-        # Get date in doc
-        date = new Date doc.date
-
-        # Find date of last Sunday
-        today = new Date()
-        lastSunday = new Date(
-          today.getUTCFullYear(),
-          today.getUTCMonth(),
-          today.getUTCDate()
-        )
-        lastSunday.setUTCDate(
-          lastSunday.getUTCDate() - lastSunday.getUTCDay()
-        )
-
-        # Is it older than last Sunday?
-        if(date < lastSunday)
-          emit doc.recruiter, {'prev':1,'current':0}
-        else
-          emit doc.recruiter, {'prev':0,'current':1}
-
-    reduce = (key_in, values_in) ->
-      totals = {'prev':0,'current':0}
-
-      for value,key in values_in
-        totals.prev = totals.prev + value.prev
-        totals.current = totals.current + value.current
-
-      return totals
-
-    @nationDB.mapReduce map, reduce,
-      'query':query
-      'out':{inline:1}
-    , (error,result) ->
-        if error
-          console.log "ERROR HERE"
-          callback error, null
-        else
-          result = _.map result, (entry) ->
-            'recruiter': entry._id
-            'count': entry.value
-
-          callback null, result
+    @nationDB.group ['recruiter'],
+      parsedQuery,
+      {count:0},
+      "function(obj,res){res.count++;}",
+      (error, result) ->
+        callback error, result
 
 
   find: (nationName, callback) ->
