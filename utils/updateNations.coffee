@@ -35,15 +35,15 @@ updateFeederNations = (callback) ->
 
 
 # Keep array of all nations currently in new list
-newNations = []
+newFeederNations = []
 updateNewNations = (callback) ->
   NS = new Nationstates()
   NS.api {'q':'newnations'}, (response) ->
 
-    newNations.length = 0
-    newNations.push.apply newNations, response.WORLD.NEWNATIONS[0].split(',')
+    newFeederNations.length = 0
+    newFeederNations.push.apply newFeederNations, response.WORLD.NEWNATIONS[0].split(',')
 
-    callback? newNations
+    callback? newFeederNations
 
 # Keep array of the sinker nations
 sinkerNations = []
@@ -73,6 +73,30 @@ updateSinkerNations = (callback) ->
       nations.push nation_array
       update()
 
+newSinkerNations = []
+updateNewSinkerNations = (callback) ->
+  tmp = sinkerNations.slice(0,150)
+  nations = new Nation 'TNI', ['feeder','sinker']
+  nations.nationDB.find(
+    {'name':{$in:tmp}}
+  )
+  .toArray (error, results) ->
+    if error
+      console.log 'There was an error loading initial nations
+                  from mongodb: ',error
+      return
+
+    # Get array of nation names from database entries
+    results = _.map results, (result) ->
+      result.name
+
+    tmp = _.difference(tmp, results)
+
+    newSinkerNations.length = 0
+    newSinkerNations.push.apply newSinkerNations, tmp
+
+    callback? newSinkerNations
+
 
 
 #Keep track of leading nations from previous runs
@@ -91,14 +115,14 @@ updateRecruitable = (callback) ->
       )
       .min()
       .value()
-
-  getHead = (list) ->
-    _.first list, 10
+    console.log 'GOT APPENDABLE: ', ret
+    return ret
 
   pushNations = (source, sourceList, newList, head) ->
     #Push new newList onto source list
     multi = redis.multi()
     for nation in getAppendable(newList, head).reverse()
+      multi.lrem  source, 0, nation
       multi.lpush source, nation
     multi.exec ->
 
@@ -113,17 +137,17 @@ updateRecruitable = (callback) ->
   #Update Feeder arrays
   ###
 
-  pushNations 'feeder', feederNations, newNations, feederHead
+  pushNations 'feeder', feederNations, newFeederNations, feederHead
   feederHead.length = 0
-  feederHead.push.apply feederHead, getHead newNations
+  feederHead.push.apply feederHead, newFeederNations
 
   ###
   #Update Sinker arrays
   ###
 
-  pushNations 'sinker', sinkerNations, _.first(sinkerNations,50), sinkerHead
+  pushNations 'sinker', sinkerNations, newSinkerNations, sinkerHead
   sinkerHead.length = 0
-  sinkerHead.push.apply sinkerHead, sinkerNations
+  sinkerHead.push.apply sinkerHead, newSinkerNations
 
   callback?()
 
@@ -135,10 +159,10 @@ updateRecruitable = (callback) ->
 bootNationUpdateLoops = ->
   ### 
   # Initialization:
-  #  Find newNations.
+  #  Find newFeederNations.
   #  Find feederNations
   #  Generate heads from nations already found in the database
-  #  Generate recruitable list given newNations, feederNations
+  #  Generate recruitable list given newFeederNations, feederNations
   #    and unrecruitable list
   ###
 
@@ -150,6 +174,7 @@ bootNationUpdateLoops = ->
       setInterval(updateNewNations, 30*1000)
       setInterval(updateFeederNations, 30*1000)
       setInterval(updateSinkerNations, 30*1000)
+      setInterval(updateNewSinkerNations, 30*1000)
 
       setInterval(updateRecruitable, 15*1000)
 
@@ -157,7 +182,7 @@ bootNationUpdateLoops = ->
   run_lists_loaded = () ->
 
     # find nations in base lists already in the database
-    check_nations = newNations.concat(sinkerNations)
+    check_nations = newFeederNations.concat(newSinkerNations)
     nations = new Nation 'TNI', ['feeder','sinker']
     nations.nationDB.find(
       {'name':{$in:check_nations}}
@@ -176,42 +201,33 @@ bootNationUpdateLoops = ->
       heads_loaded = _.after 2, heads_loaded
 
       ###
-      #The feeder nations lists runs a newest first algorithm
-      #so, we only need to worry about finding the most recently
-      #found nation
+      #Add found nations to the heads.
+      #Add the last x nations to the head, where x is
+      #the size of the new nations list
       ###
       feederHead.length = 0
       feederHead.push.apply feederHead, results
-      redis.lrange 'feeder', 0, 10, (error,reply) ->
+      redis.lrange 'feeder', 0, 50, (error,reply) ->
         feederHead.push.apply feederHead, reply
         heads_loaded()
 
-      ###
-      #The sinker nations lists runs a total region algorithm,
-      #we need to do one of two things
-      # 1. If redis is already populated, just find the newest head
-      # 2. If redis is not populated, populate it and set a head
-      ###
-      redis.llen 'sinker', (error,reply) ->
-        if reply
-          sinkerHead.length = 0
-          sinkerHead.push.apply sinkerHead, results
-        else
-          multi = redis.multi()
-          for nation in _.difference(sinkerNations, results).reverse()
-            multi.lpush 'sinker', nation
-          multi.exec()
-          sinkerHead.length = 0
-          sinkerHead.push.apply sinkerHead, _.first sinkerNations, 10
-
+      sinkerHead.length = 0
+      sinkerHead.push.apply sinkerHead, results
+      redis.lrange 'sinker', 0, 150, (error,reply) ->
+        sinkerHead.push.apply sinkerHead, reply
         heads_loaded()
 
 
-  run_lists_loaded = _.after 3, run_lists_loaded
+
+  run_lists_loaded = _.after 2, run_lists_loaded
 
   # Preload NSAPI lists
-  updateSinkerNations () -> run_lists_loaded()
-  updateNewNations () -> run_lists_loaded()
-  updateFeederNations () -> run_lists_loaded()
+  updateSinkerNations () ->
+    updateNewSinkerNations () ->
+      run_lists_loaded()
+
+  updateFeederNations () ->
+    updateNewNations () ->
+      run_lists_loaded()
 
 
