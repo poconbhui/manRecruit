@@ -9,6 +9,8 @@ lib-cov
 
 *.swp
 
+*.rdb
+
 pids
 logs
 results
