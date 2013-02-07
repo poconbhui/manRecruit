@@ -90,6 +90,8 @@ updateNewSinkerNations = (callback) ->
     results = _.map results, (result) ->
       result.name
 
+    console.log "RESULTS: ", result
+
     tmp = _.difference(tmp, results)
 
     newSinkerNations.length = 0
@@ -115,8 +117,6 @@ updateRecruitable = (callback) ->
       )
       .min()
       .value()
-    console.log 'GOT APPENDABLE: ', ret
-    return ret
 
   pushNations = (source, sourceList, newList, head) ->
     #Push new newList onto source list
