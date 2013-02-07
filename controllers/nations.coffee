@@ -36,8 +36,8 @@ class NationController
     nationSource = res.locals.nationSource
     nations = new Nation 'TNI', nationSource
 
-    # If 'sent' button was pressed
     if req.body.sent?
+      # 'sent' button was pressed
       nations.addRecruited
         'name':req.body.nation,
         'recruiter':res.locals.username
@@ -47,10 +47,17 @@ class NationController
 
         # Give recruiter new nation
         res.redirect "/nations/#{nationSource}/new?#{randomString()}"
-
     else
-      # Give recruiter a new nation
-      res.redirect "/nations/#{nationSource}/new?#{randomString()}"
+      # 'ignored' button was pressed
+      nations.addRecruited
+        'name':req.body.nation,
+        'recruiter':'REJECTED'
+      , (error,result) ->
+        if error
+          console.log 'Error Adding Nation: ', error, result
+
+        # Give recruiter new nation
+        res.redirect "/nations/#{nationSource}/new?#{randomString()}"
 
 
   ###
