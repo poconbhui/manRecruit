@@ -90,7 +90,7 @@ updateNewSinkerNations = (callback) ->
     results = _.map results, (result) ->
       result.name
 
-    console.log "RESULTS: ", result
+    console.log "RESULTS: ", results
 
     tmp = _.difference(tmp, results)
 
